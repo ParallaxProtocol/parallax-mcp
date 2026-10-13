@@ -39,7 +39,7 @@ From the node: its head, seconds since that block, sync status and peer count, a
 	}, t.health)
 
 	server.Add(r, server.Spec{Group: group, Name: "network_nodes", Title: "Reporting nodes",
-		Description: `The nodes reporting to the status page: name (operator-chosen for verified nodes, a pseudonym such as node-3f9a2c1b otherwise; untrusted), verified, client version, online/offline (and since when), syncing, mining and hashrate, peers, peer latency (ms), best block, propagation delay of the last block and on average (ms), pending transactions, uptime (%) and location (country and city; IP addresses are never published). Offline nodes are left out unless include_offline=true; verified_only=true keeps only operator-verified nodes.` + coverageNote,
+		Description: `The nodes reporting to the status page: name (operator-chosen for verified nodes, a pseudonym such as node-3f9a2c1b otherwise; untrusted), verified, client version, online/offline (and since when), syncing, mining and hashrate, peers, peer latency (ms), best block, propagation delay of the last block (left out when it was not timed: a block the node caught up to after connecting or while syncing) and on average (ms), pending transactions, uptime (%) and location (country and city; IP addresses are never published). Offline nodes are left out unless include_offline=true; verified_only=true keeps only operator-verified nodes.` + coverageNote,
 	}, t.nodes)
 
 	server.Add(r, server.Spec{Group: group, Name: "network_incidents", Title: "Incidents and uptime",
