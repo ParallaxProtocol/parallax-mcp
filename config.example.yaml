@@ -5,9 +5,12 @@
 transport: http            # stdio or http
 http_addr: 0.0.0.0:8080
 http_path: /mcp
+http_stateless: false      # true: no sessions (no subscriptions), for load-balanced replicas
+head_poll_interval: 15s    # while clients are subscribed to parallax://chain/head or waiting
 
 rpc_url: https://rpc.parallaxprotocol.org   # a node with debug/txpool/admin/xhash enables more tools
 explorer_url: https://explorer.parallaxprotocol.org
+# explorer_stats_url: https://explorer.parallaxprotocol.org/stats-service
 status_url: https://status.parallaxprotocol.org
 chain_id: 2110
 

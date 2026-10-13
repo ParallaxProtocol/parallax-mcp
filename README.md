@@ -40,6 +40,8 @@ anything third parties can write is wrapped as `{"untrusted": "..."}` (see
 | `estimate_gas` | Gas and fee for a transaction |
 | `get_logs` | Event logs, bounded by block range and count |
 | `gas_price` | `eth_gasPrice` and Parallax's Bitcoin Core-style fee estimates for 1 to 144 blocks |
+| `audit_token_approvals` | Every ERC-20 allowance and NFT approval an address has granted that is still live, checked against current contract state, with exposure, risk flags, severity and the exact revoke call |
+| `wait_for_new_block` | Waits (up to 10 minutes) for the next block; for clients without resource subscriptions |
 | `trace_transaction`, `trace_call` | Call trees, pre-state and selectors (needs the `debug` namespace) |
 
 **mining**: derived from block headers and the emission schedule; each derivation is documented in the tool description
@@ -55,8 +57,11 @@ anything third parties can write is wrapped as `{"untrusted": "..."}` (see
 `explorer_address`, `explorer_token_balances`, `explorer_transactions`,
 `explorer_token`, `explorer_token_holders`, `explorer_token_transfers`,
 `explorer_contract` (interface, metadata and optionally source),
-`explorer_internal_transactions`, `explorer_search`, `explorer_stats`.
-Lists are paginated with an opaque `next_cursor`.
+`explorer_internal_transactions`, `explorer_search`, `explorer_stats`
+(including the stats service's counters), and `explorer_charts`: 21 time
+series (accounts, transactions, fees, blocks, gas, contracts) at day, week,
+month or year resolution from Blockscout's stats service. Lists are
+paginated with an opaque `next_cursor`.
 
 **network**: from the status page and the node
 
@@ -66,6 +71,7 @@ Lists are paginated with an opaque `next_cursor`.
 | `network_nodes` | The nodes reporting to the status page |
 | `network_incidents` | Incident history and verified nodes' uptime |
 | `network_propagation` | Block propagation delays, stale blocks and reorgs |
+| `network_trends` | Hashrate, difficulty, block time, hashprice, security budget, nodes, latency, uptime and mempool over 7 days in 4-hour slices |
 | `node_peers` | The node's peers and address book, with IP addresses withheld (needs `admin`) |
 
 **mempool**: `mempool_status` (node and network-wide) and
@@ -105,6 +111,14 @@ traces at old blocks) needs `--gcmode archive`.
 | `parallax://glossary` | Parallax and proof-of-work terms used by the tools |
 | `parallax://docs`, `parallax://docs/{path}` | The documentation of [docs.parallaxprotocol.org](https://docs.parallaxprotocol.org) (v2.1.x) |
 | `parallax://pips`, `parallax://pips/pip-000N` | PIP-0002 to PIP-0006 |
+| `parallax://chain/head` | The latest block; **subscribable**: a `resources/updated` notification on every new block (and reorg) |
+| `parallax://network/alerts` | The status page's active alerts; **subscribable**: a notification when one appears, clears or changes level |
+
+Subscriptions work on stdio and on the HTTP transport's sessions (not
+with `--http-stateless`). The server polls the node every
+`--head-poll-interval` (15 s) only while someone is subscribed or waiting,
+and stops ten minutes after the last interest. Clients without
+subscription support can call `wait_for_new_block` instead.
 
 The documents are a snapshot embedded in the binary; refresh them with
 `make sync-content` (it reads `../parallax` with `git archive` at `main`
@@ -192,6 +206,9 @@ in that order of precedence. `parallax-mcp -help` lists them all.
 | `--groups` | `chain,mining,explorer,network,mempool` | Add `tx` for the transaction tools |
 | `--allow-broadcast` | off | Registers `broadcast_signed_tx` (needs `tx`) |
 | `--http-addr`, `--http-path` | `127.0.0.1:8080`, `/mcp` | HTTP transport |
+| `--http-stateless` | off | No sessions: replicas need no sticky load balancing, but resource subscriptions are unavailable |
+| `--head-poll-interval` | `15s` | How often the head is polled while clients are subscribed or waiting |
+| `--explorer-stats-url` | `<explorer-url>/stats-service` | Blockscout stats service, for charts and counters |
 | `--rate-limit`, `--rate-burst` | `2`/s, `20` | Per client address, HTTP transport |
 | `--max-concurrent` | `64` | Requests in flight, HTTP transport |
 | `--trusted-proxies` | none | Proxies allowed to set `X-Forwarded-For` |
@@ -252,8 +269,12 @@ docker run -d -p 8080:8080 \
 ```
 
 Put it behind a TLS-terminating reverse proxy and set `--trusted-proxies`
-to the proxy's address so rate limits apply per real client. The HTTP
-transport is stateless, so several replicas can share a load balancer.
+to the proxy's address so rate limits apply per real client. HTTP sessions
+live in memory, so several replicas need sticky load balancing on the
+`Mcp-Session-Id` header, or `--http-stateless`, which gives up resource
+subscriptions. The proxy must allow long-lived responses (server-sent events
+and `wait_for_new_block`, which sends progress notifications every 15
+seconds to clients that ask for them).
 `/healthz` answers `ok`; with `--metrics-addr`, Prometheus metrics count
 tool calls by tool and outcome (`ok`, `error`, `partial`), tool and backend
 latency, backend retries and errors, and rate-limited requests. Logs are
@@ -284,7 +305,8 @@ cmd/mcpcall           a command-line MCP client
 internal/server       tool registration: timeouts, logging, metrics, size limits
 internal/transport    stdio and Streamable HTTP (rate limits, health check)
 internal/backend      node (RPC allowlist), blockscout, status (cache)
-internal/tools/*      the tool groups
+internal/tools/*      the tool groups (live: head and alert subscriptions, wait_for_new_block)
+internal/watch        the head and alert poller behind subscriptions
 internal/resources    resources and the embedded docs and PIPs
 internal/prompts      prompts
 internal/evm          ABI encoding and decoding, RPC types
@@ -295,3 +317,7 @@ internal/untrusted    sanitizing and wrapping third-party text
 The node backend uses Parallax's own `rpc` package and types rather than
 go-ethereum's, because Parallax headers carry an `epochStartTime` field
 that go-ethereum's types drop, which would change block hashes.
+
+## License
+
+GNU General Public License v3.0; see [LICENSE](LICENSE).
