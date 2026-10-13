@@ -16,6 +16,7 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -207,6 +208,18 @@ func TestLiveNewFeatures(t *testing.T) {
 	w := l.call(t, "wait_for_new_block", map[string]any{"after_block": n - 1})
 	if w["new_block"] != true {
 		t.Fatalf("wait_for_new_block: %v", w)
+	}
+}
+
+func TestLiveDocs(t *testing.T) {
+	l := setup(t)
+	s := l.call(t, "search_docs", map[string]any{"query": "mining pool"})
+	if testutil.Get(s, "results", 0, "path") == nil {
+		t.Fatalf("search_docs: %v", s)
+	}
+	d := l.call(t, "read_doc", map[string]any{"path": "pip-0002"})
+	if !strings.Contains(d["text"].(string), "ASERT") {
+		t.Fatalf("read_doc: %v", d["title"])
 	}
 }
 

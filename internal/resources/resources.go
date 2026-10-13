@@ -136,7 +136,8 @@ func docIndex() []Entry {
 		rel := strings.TrimSuffix(strings.TrimPrefix(p, "content/docs/"), ".mdx")
 		title, desc := frontMatter(p)
 		if title == "" {
-			title = rel
+			raw, _ := files.ReadFile(p)
+			title = fallbackTitle(rel, stripFrontMatter(string(raw)))
 		}
 		out = append(out, Entry{URI: uriDocs + "/" + rel, Title: title, Summary: desc})
 		return nil

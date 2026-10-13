@@ -45,6 +45,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      # Embed the current docs and PIPs rather than the snapshot committed
+      # here, so a release never ships documentation older than the site.
+      - uses: actions/checkout@v4
+        with:
+          repository: ParallaxProtocol/parallax
+          ref: main
+          path: .parallax
+      - name: Refresh the embedded docs and PIPs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PARALLAX_REPO: .parallax
+        run: |
+          git -C .parallax checkout -q -B main
+          scripts/sync-content.sh main
+          git status --short internal/resources/content | head -20
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3

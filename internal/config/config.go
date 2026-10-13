@@ -26,13 +26,14 @@ const (
 	GroupNetwork  = "network"
 	GroupMempool  = "mempool"
 	GroupTx       = "tx"
+	GroupDocs     = "docs"
 )
 
 // AllGroups lists every group in display order.
-var AllGroups = []string{GroupChain, GroupMining, GroupExplorer, GroupNetwork, GroupMempool, GroupTx}
+var AllGroups = []string{GroupChain, GroupMining, GroupExplorer, GroupNetwork, GroupMempool, GroupDocs, GroupTx}
 
 // DefaultGroups is every group except tx, which must be enabled explicitly.
-var DefaultGroups = []string{GroupChain, GroupMining, GroupExplorer, GroupNetwork, GroupMempool}
+var DefaultGroups = []string{GroupChain, GroupMining, GroupExplorer, GroupNetwork, GroupMempool, GroupDocs}
 
 // Transports.
 const (

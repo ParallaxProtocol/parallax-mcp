@@ -6,6 +6,7 @@ import (
 	"github.com/ParallaxProtocol/parallax-mcp/internal/resources"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/server"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/chain"
+	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/docs"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/explorer"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/live"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/mempool"
@@ -24,6 +25,7 @@ var All = []func(*server.Registrar){
 	network.Register,
 	mempool.Register,
 	tx.Register,
+	docs.Register,
 	resources.Register,
 	prompts.Register,
 }

@@ -3,3 +3,4 @@ bin
 *.md
 !internal/resources/**/*.md
 config.yaml
+.parallax

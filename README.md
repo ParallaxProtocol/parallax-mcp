@@ -81,6 +81,12 @@ paginated with an opaque `next_cursor`.
 **mempool**: `mempool_status` (node and network-wide) and
 `mempool_transactions` (needs `txpool`).
 
+**docs**: `search_docs` ranks the Parallax documentation and PIPs for a
+question (BM25, boosted by titles and headings) and returns excerpts with
+links; `read_doc` returns a page or PIP in full, in parts for long ones.
+They let assistants look up Parallax specifics on their own instead of
+guessing from Ethereum or Bitcoin.
+
 **tx**: off by default
 
 | Tool | What it returns |
@@ -124,9 +130,11 @@ with `--http-stateless`). The server polls the node every
 and stops ten minutes after the last interest. Clients without
 subscription support can call `wait_for_new_block` instead.
 
-The documents are a snapshot embedded in the binary; refresh them with
-`make sync-content` (it reads `../parallax` with `git archive` at `main`
-and the PIP discussions with the `gh` CLI).
+The documents are a snapshot embedded in the binary, searchable with the
+docs tools. CI refreshes it from the `parallax` repository's `main` branch
+and the PIP discussions whenever it builds an image, so published images
+carry current docs; locally, `make sync-content` does the same from
+`../parallax` (it needs the `gh` CLI).
 
 Prompts: `explain_transaction` (hash), `audit_address` (address),
 `network_health_report`.
@@ -140,7 +148,7 @@ Local, over stdio:
 ```sh
 claude mcp add parallax -- /path/to/parallax-mcp
 # with the transaction tools, against your own node:
-claude mcp add parallax -- /path/to/parallax-mcp --groups chain,mining,explorer,network,mempool,tx --rpc-url http://127.0.0.1:8545
+claude mcp add parallax -- /path/to/parallax-mcp --groups chain,mining,explorer,network,mempool,docs,tx --rpc-url http://127.0.0.1:8545
 ```
 
 Remote, over HTTP, using the public instance:
@@ -207,7 +215,7 @@ in that order of precedence. `parallax-mcp -help` lists them all.
 | `--explorer-url` | `https://explorer.parallaxprotocol.org` | Blockscout |
 | `--status-url` | `https://status.parallaxprotocol.org` | Status page |
 | `--chain-id` | `2110` | The server refuses to start against another chain |
-| `--groups` | `chain,mining,explorer,network,mempool` | Add `tx` for the transaction tools |
+| `--groups` | `chain,mining,explorer,network,mempool,docs` | Add `tx` for the transaction tools |
 | `--allow-broadcast` | off | Registers `broadcast_signed_tx` (needs `tx`) |
 | `--http-addr`, `--http-path` | `127.0.0.1:8080`, `/mcp` | HTTP transport |
 | `--http-stateless` | off | No sessions: replicas need no sticky load balancing, but resource subscriptions are unavailable |

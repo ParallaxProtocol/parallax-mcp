@@ -14,9 +14,9 @@ explorer_url: https://explorer.parallaxprotocol.org
 status_url: https://status.parallaxprotocol.org
 chain_id: 2110
 
-# Tool groups: chain, mining, explorer, network, mempool, tx.
+# Tool groups: chain, mining, explorer, network, mempool, docs, tx.
 # tx (build/decode transactions) is off by default.
-groups: [chain, mining, explorer, network, mempool]
+groups: [chain, mining, explorer, network, mempool, docs]
 
 # The only switch that registers broadcast_signed_tx. Keep it off for a
 # public deployment.
