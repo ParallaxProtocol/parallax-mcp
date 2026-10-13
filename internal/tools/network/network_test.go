@@ -156,3 +156,19 @@ func toStrings(v any) []string {
 	}
 	return out
 }
+
+func TestTrends(t *testing.T) {
+	e := newEnv(t, nil)
+	out := e.MustCall(t, "network_trends", map[string]any{"metrics": []any{"hashes_per_second", "active_nodes"}})
+	rows := out["rows"].([]any)
+	if out["slices"] != float64(42) || len(rows) != 42 {
+		t.Fatalf("slices: %v", out["slices"])
+	}
+	last := rows[41].(map[string]any)
+	if last["start"] == nil || last["hashes_per_second"] == nil || len(last) != 3 {
+		t.Fatalf("row: %v", last)
+	}
+	if _, errText := e.Call(t, "network_trends", map[string]any{"metrics": []any{"price"}}); errText == "" {
+		t.Fatal("unknown metric accepted")
+	}
+}

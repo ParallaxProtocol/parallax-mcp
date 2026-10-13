@@ -214,8 +214,9 @@ type Stats struct {
 			Nodes    int    `json:"nodes"`
 		} `json:"platforms"`
 	} `json:"clientVersions"`
-	NodeList  []NodeRow `json:"nodeList"`
-	Alerts    []Alert   `json:"alerts"`
+	NodeList  []NodeRow       `json:"nodeList"`
+	Trends    json.RawMessage `json:"trends"`
+	Alerts    []Alert         `json:"alerts"`
 	Incidents *struct {
 		Since       int64      `json:"since"`
 		RebuiltFrom *int64     `json:"rebuiltFrom"`

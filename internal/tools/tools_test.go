@@ -41,9 +41,9 @@ func TestDefaultConfigIsReadOnly(t *testing.T) {
 func TestEveryToolIsDescribedAndStrict(t *testing.T) {
 	e := testutil.NewEnv(t, tools.All, fullNode, func(c *config.Config) { c.AllowBroadcast = true })
 	ts := listTools(t, e)
-	// chain 14, explorer 10, mining 3, network 5, mempool 2, tx 3.
-	if len(ts) != 37 {
-		t.Fatalf("%d tools registered, want 37", len(ts))
+	// chain 16, explorer 11, mining 3, network 6, mempool 2, tx 3.
+	if len(ts) != 41 {
+		t.Fatalf("%d tools registered, want 41", len(ts))
 	}
 	for _, tool := range ts {
 		if len(tool.Description) < 80 {

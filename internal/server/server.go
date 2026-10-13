@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -32,8 +33,10 @@ type Deps struct {
 	Cfg      config.Config
 	Node     *node.Client
 	Explorer *blockscout.Client
-	Status   *status.Client
-	Log      *slog.Logger
+	// ExplorerStats is the explorer's stats service (charts and counters).
+	ExplorerStats *blockscout.StatsClient
+	Status        *status.Client
+	Log           *slog.Logger
 	// Now is time.Now outside tests.
 	Now func() time.Time
 }
@@ -58,6 +61,8 @@ type Spec struct {
 	// ExplorerOnly marks tools that only read the explorer, so they need no
 	// node.
 	ExplorerOnly bool
+	// Timeout overrides the tool timeout, for tools that wait on purpose.
+	Timeout time.Duration
 }
 
 // Registrar adds tools to an MCP server.
@@ -67,6 +72,39 @@ type Registrar struct {
 	modules map[string]bool // nil when the node could not be probed
 	tools   []Spec
 	skipped []string
+
+	subMu        sync.Mutex
+	subscribable map[string]func() // URI → called on each subscription
+}
+
+// Subscribable lets clients subscribe to uri; onSubscribe runs on every
+// subscription, for example to start the poller that detects changes.
+func (r *Registrar) Subscribable(uri string, onSubscribe func()) {
+	r.subMu.Lock()
+	defer r.subMu.Unlock()
+	r.subscribable[uri] = onSubscribe
+}
+
+func (r *Registrar) subscribe(_ context.Context, req *mcp.SubscribeRequest) error {
+	r.subMu.Lock()
+	fn, ok := r.subscribable[req.Params.URI]
+	r.subMu.Unlock()
+	if !ok {
+		return fmt.Errorf("%s does not support subscriptions; subscribable resources: parallax://chain/head, parallax://network/alerts", req.Params.URI)
+	}
+	if fn != nil {
+		fn()
+	}
+	return nil
+}
+
+type requestKey struct{}
+
+// Request returns the MCP request of the tool call running in ctx, for
+// tools that report progress.
+func Request(ctx context.Context) *mcp.CallToolRequest {
+	req, _ := ctx.Value(requestKey{}).(*mcp.CallToolRequest)
+	return req
 }
 
 // ToolNames returns the registered tools, for logs and tests.
@@ -159,6 +197,9 @@ func Add[In any](r *Registrar, spec Spec, h func(ctx context.Context, in In) (an
 	log := r.Log.With("tool", spec.Name)
 	maxBytes := r.Cfg.MaxResponseBytes
 	timeout := r.Cfg.ToolTimeout
+	if spec.Timeout > 0 {
+		timeout = spec.Timeout
+	}
 	requires := spec.Requires
 	n := r.Node
 
@@ -181,7 +222,7 @@ func Add[In any](r *Registrar, spec Spec, h func(ctx context.Context, in In) (an
 			}
 		}()
 
-		ctx, cancel := context.WithTimeout(ctx, timeout)
+		ctx, cancel := context.WithTimeout(context.WithValue(ctx, requestKey{}, req), timeout)
 		defer cancel()
 
 		if requires != "" && r.modules == nil && !n.Has(ctx, requires) {
@@ -233,17 +274,19 @@ func New(ctx context.Context, deps Deps, register ...func(*Registrar)) *Registra
 	if deps.Now == nil {
 		deps.Now = time.Now
 	}
+	r := &Registrar{Deps: deps, subscribable: map[string]func(){}}
 	srv := mcp.NewServer(&mcp.Implementation{
 		Name:       "parallax-mcp",
 		Title:      "Parallax Protocol",
 		Version:    Version,
 		WebsiteURL: "https://parallaxprotocol.org",
 	}, &mcp.ServerOptions{
-		Instructions: Instructions,
-		Logger:       deps.Log,
+		Instructions:       Instructions,
+		Logger:             deps.Log,
+		SubscribeHandler:   func(ctx context.Context, req *mcp.SubscribeRequest) error { return r.subscribe(ctx, req) },
+		UnsubscribeHandler: func(context.Context, *mcp.UnsubscribeRequest) error { return nil },
 	})
-
-	r := &Registrar{Deps: deps, srv: srv}
+	r.srv = srv
 	if deps.Node != nil {
 		pctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		mods, err := deps.Node.Modules(pctx)

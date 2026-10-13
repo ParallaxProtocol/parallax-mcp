@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -50,6 +49,10 @@ From the node: its head, seconds since that block, sync status and peer count, a
 	server.Add(r, server.Spec{Group: group, Name: "network_propagation", Title: "Propagation and chain stability",
 		Description: `How fast blocks spread and how stable the chain tip is, from the status page: propagation reports with median, p90 and p99 delay (ms) after the first node saw a block, the median time for recent blocks to reach 90% of verified nodes and any consistently slow miner, delays by band; stale blocks in the last 2,000 heights, reorganization count and the last and last deep (3+ blocks) reorg with height, depth and time, and any chain split.`,
 	}, t.propagation)
+
+	server.Add(r, server.Spec{Group: group, Name: "network_trends", Title: "Network trends (7 days)",
+		Description: `The status page's figures over the last 7 days in 4-hour slices (UTC, oldest first; null where nothing was measured): block_time_seconds and hashes_per_second (each pooled over the 24 hours to the slice's end, so luck in one slice does not swing them), difficulty (mean of the slice's blocks), hashprice_lax (LAX a hash per second earns per day) and security_budget_lax (LAX miners earn per day) at today's block pay, active_nodes, synced_nodes, recommended_fee_wei, latency_ms (median peer latency), uptime_percent, pending (mempool) and mempool_pressure (pending transactions as a share of a block). "metrics" selects some of these; all by default. For longer histories of transactions, fees and gas, use explorer_charts.`,
+	}, t.trends)
 
 	server.Add(r, server.Spec{Group: group, Name: "node_peers", Title: "Node peers", Requires: "admin",
 		Description: `The configured node's own view of the peer-to-peer network (needs a node serving the admin namespace): its uptime, peer count, and each peer's client (untrusted), direction (inbound/outbound), trusted/static flags, protocols, its head block hash, and minimum ping in ms; plus the address book (addrman) size by source and the number of banned addresses. Peer IP addresses and node IDs are omitted unless the server runs on stdio with --expose-peer-addresses.`,
@@ -334,40 +337,7 @@ func incident(i status.Incident, now time.Time) map[string]any {
 	return m
 }
 
-var hexRe = regexp.MustCompile(`^0x[0-9a-fA-F]*$`)
-
-// wrapJSON decodes status page JSON, wrapping every string that is not a
-// hex value as untrusted: pool names and descriptions come from node
-// operators' reports and configuration the server does not control.
-func wrapJSON(raw json.RawMessage) any {
-	if len(raw) == 0 {
-		return nil
-	}
-	var v any
-	if err := json.Unmarshal(raw, &v); err != nil {
-		return nil
-	}
-	var walk func(any) any
-	walk = func(v any) any {
-		switch v := v.(type) {
-		case string:
-			if hexRe.MatchString(v) {
-				return v
-			}
-			return untrusted.New(v)
-		case []any:
-			for i := range v {
-				v[i] = walk(v[i])
-			}
-		case map[string]any:
-			for k := range v {
-				v[k] = walk(v[k])
-			}
-		}
-		return v
-	}
-	return walk(v)
-}
+func wrapJSON(raw json.RawMessage) any { return untrusted.WrapJSON(raw) }
 
 // ---- network_nodes ----
 
@@ -513,6 +483,66 @@ func (t *tools) propagation(ctx context.Context, _ noIn) (any, error) {
 		}
 	}
 	return out, nil
+}
+
+// ---- network_trends ----
+
+var trendFields = map[string]string{
+	"block_time_seconds":  "blockTimeSeconds",
+	"hashes_per_second":   "hashesPerSecond",
+	"difficulty":          "difficulty",
+	"hashprice_lax":       "hashpriceLax",
+	"security_budget_lax": "securityBudgetLax",
+	"active_nodes":        "activeNodes",
+	"synced_nodes":        "syncedNodes",
+	"recommended_fee_wei": "recommendedFeeWei",
+	"latency_ms":          "latencyMs",
+	"uptime_percent":      "uptimePercent",
+	"pending":             "pending",
+	"mempool_pressure":    "mempoolPressure",
+}
+
+type trendsIn struct {
+	Metrics []string `json:"metrics,omitempty" jsonschema:"which series to return (default all): block_time_seconds, hashes_per_second, difficulty, hashprice_lax, security_budget_lax, active_nodes, synced_nodes, recommended_fee_wei, latency_ms, uptime_percent, pending, mempool_pressure"`
+}
+
+func (t *tools) trends(ctx context.Context, in trendsIn) (any, error) {
+	snap, err := t.snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var cols map[string][]json.RawMessage
+	if err := json.Unmarshal(snap.Trends, &cols); err != nil || len(cols["start"]) == 0 {
+		return nil, fmt.Errorf("the status page returned no trends")
+	}
+	metrics := in.Metrics
+	if len(metrics) == 0 {
+		for m := range trendFields {
+			metrics = append(metrics, m)
+		}
+		sort.Strings(metrics)
+	}
+	for _, m := range metrics {
+		if _, ok := trendFields[m]; !ok {
+			return nil, server.Inputf("unknown metric %q", m)
+		}
+	}
+	rows := make([]map[string]any, len(cols["start"]))
+	for i, raw := range cols["start"] {
+		var ms int64
+		_ = json.Unmarshal(raw, &ms)
+		row := map[string]any{"start": time.UnixMilli(ms).UTC().Format(time.RFC3339)}
+		for _, m := range metrics {
+			col := cols[trendFields[m]]
+			if i < len(col) {
+				var v any
+				_ = json.Unmarshal(col[i], &v)
+				row[m] = v
+			}
+		}
+		rows[i] = row
+	}
+	return map[string]any{"slice_hours": 4, "slices": len(rows), "metrics": metrics, "rows": rows}, nil
 }
 
 // ---- node_peers ----

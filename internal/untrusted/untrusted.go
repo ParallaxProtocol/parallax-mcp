@@ -11,6 +11,7 @@ package untrusted
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -108,4 +109,38 @@ func Printable(b []byte) bool {
 		}
 	}
 	return printable*10 >= total*9
+}
+
+var hexRe = regexp.MustCompile(`^0x[0-9a-fA-F]*$`)
+
+// WrapJSON decodes JSON from a third party, wrapping every string that is
+// not a hex value (an address, hash or quantity) as untrusted text.
+func WrapJSON(raw json.RawMessage) any {
+	if len(raw) == 0 {
+		return nil
+	}
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil
+	}
+	var walk func(any) any
+	walk = func(v any) any {
+		switch v := v.(type) {
+		case string:
+			if hexRe.MatchString(v) {
+				return v
+			}
+			return New(v)
+		case []any:
+			for i := range v {
+				v[i] = walk(v[i])
+			}
+		case map[string]any:
+			for k := range v {
+				v[k] = walk(v[k])
+			}
+		}
+		return v
+	}
+	return walk(v)
 }

@@ -231,12 +231,13 @@ func NewEnv(t testing.TB, register []func(*server.Registrar), setup func(*Env), 
 	t.Cleanup(n.Close)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	deps := server.Deps{
-		Cfg:      cfg,
-		Node:     n,
-		Explorer: blockscout.New(httpx.Options{BaseURL: cfg.ExplorerURL, Timeout: cfg.BackendTimeout}),
-		Status:   status.New(httpx.Options{BaseURL: cfg.StatusURL, Timeout: cfg.BackendTimeout}, time.Minute),
-		Log:      log,
-		Now:      func() time.Time { return e.Now },
+		Cfg:           cfg,
+		Node:          n,
+		Explorer:      blockscout.New(httpx.Options{BaseURL: cfg.ExplorerURL, Timeout: cfg.BackendTimeout}),
+		ExplorerStats: blockscout.NewStats(httpx.Options{BaseURL: cfg.StatsURL(), Timeout: cfg.BackendTimeout}),
+		Status:        status.New(httpx.Options{BaseURL: cfg.StatusURL, Timeout: cfg.BackendTimeout}, time.Minute),
+		Log:           log,
+		Now:           func() time.Time { return e.Now },
 	}
 	ctx := context.Background()
 	e.Reg = server.New(ctx, deps, register...)

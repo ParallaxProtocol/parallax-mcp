@@ -65,9 +65,10 @@ func setup(t *testing.T) *live {
 	ex.BaseURL, st.BaseURL = cfg.ExplorerURL, cfg.StatusURL
 	deps := server.Deps{
 		Cfg: cfg, Node: n,
-		Explorer: blockscout.New(ex),
-		Status:   status.New(st, time.Minute),
-		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Explorer:      blockscout.New(ex),
+		ExplorerStats: blockscout.NewStats(httpx.Options{BaseURL: cfg.StatsURL(), Timeout: cfg.BackendTimeout, Retries: 2}),
+		Status:        status.New(st, time.Minute),
+		Log:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	ctx := context.Background()
 	reg := server.New(ctx, deps, tools.All...)
@@ -179,6 +180,33 @@ func TestLiveExplorer(t *testing.T) {
 	s := l.call(t, "explorer_search", map[string]any{"query": "pepe"})
 	if len(s["results"].([]any)) == 0 {
 		t.Fatal("search found nothing")
+	}
+}
+
+func TestLiveNewFeatures(t *testing.T) {
+	l := setup(t)
+	charts := l.call(t, "explorer_charts", nil)
+	if len(charts["charts"].([]any)) < 10 {
+		t.Fatalf("explorer_charts catalog: %v", charts)
+	}
+	series := l.call(t, "explorer_charts", map[string]any{"chart": "newTxns"})
+	if len(series["points"].([]any)) == 0 {
+		t.Fatalf("newTxns: %v", series)
+	}
+	trends := l.call(t, "network_trends", map[string]any{"metrics": []any{"hashes_per_second"}})
+	if trends["slices"].(float64) < 6 {
+		t.Fatalf("network_trends: %v", trends)
+	}
+	// A known approver: its unlimited ASP approval to a verified vault.
+	ap := l.call(t, "audit_token_approvals", map[string]any{"owner": "0x57db4e4b824937d641d05cd355027e85e2fb4958"})
+	if ap["approvals"] == nil || len(ap["approvals"].([]any)) == 0 {
+		t.Fatalf("audit_token_approvals: %v", ap)
+	}
+	head := l.call(t, "chain_info", nil)
+	n := testutil.Get(head, "head", "number").(float64)
+	w := l.call(t, "wait_for_new_block", map[string]any{"after_block": n - 1})
+	if w["new_block"] != true {
+		t.Fatalf("wait_for_new_block: %v", w)
 	}
 }
 

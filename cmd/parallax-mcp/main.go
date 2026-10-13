@@ -103,6 +103,9 @@ func backends(cfg config.Config, log *slog.Logger) (server.Deps, error) {
 	if cfg.ExplorerURL != "" {
 		deps.Explorer = blockscout.New(httpx.Options{BaseURL: cfg.ExplorerURL, Timeout: cfg.BackendTimeout, Retries: cfg.BackendRetries, UserAgent: ua})
 	}
+	if u := cfg.StatsURL(); u != "" {
+		deps.ExplorerStats = blockscout.NewStats(httpx.Options{BaseURL: u, Timeout: cfg.BackendTimeout, Retries: cfg.BackendRetries, UserAgent: ua})
+	}
 	if cfg.StatusURL != "" {
 		deps.Status = status.New(httpx.Options{BaseURL: cfg.StatusURL, Timeout: cfg.BackendTimeout, Retries: cfg.BackendRetries, UserAgent: ua}, cfg.StatusCacheTTL)
 	}

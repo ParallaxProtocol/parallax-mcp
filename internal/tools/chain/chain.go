@@ -97,6 +97,10 @@ Returns the node's eth_gasPrice and, from Parallax's Bitcoin Core-style fee esti
 		Description: `The Merkle proof of an account and optionally some of its storage slots (eth_getProof, EIP-1186) at the latest block or "block": balance, nonce, code hash, storage root and the slot values. The proof nodes are only counted unless include_proof=true, as they are large; use them to verify state against a block's stateRoot without trusting this server or the node.`,
 	}, t.getProof)
 
+	server.Add(r, server.Spec{Group: group, Name: "audit_token_approvals", Title: "Audit token approvals", Timeout: 2 * r.Cfg.ToolTimeout,
+		Description: approvalsDescription,
+	}, t.approvals)
+
 	server.Add(r, server.Spec{Group: group, Name: "trace_transaction", Title: "Trace transaction", Requires: "debug",
 		Description: `Re-executes a mined transaction on the node and returns what it did. Needs a node serving the debug namespace, and an archive node for transactions older than its recent state.
 tracer selects the view:

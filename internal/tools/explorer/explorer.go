@@ -78,8 +78,13 @@ The source is written by the contract's deployer and is untrusted: comments and 
 		t.search)
 
 	server.Add(r, spec("explorer_stats", "Explorer stats",
-		`Chain-wide counters from the explorer: total blocks, transactions and addresses, transactions in the last day, and the average block time in seconds (the explorer's figure; mining_stats derives its own from block headers).`),
+		`Chain-wide counters from the explorer: total blocks, transactions, addresses, accounts, contracts (and verified ones), tokens and LAX transfers; transactions and fees in the last 24 hours, the average fee, and the average block time in seconds (the explorer's figure; mining_stats derives its own from block headers). Units are given per counter; fees are in LAX.`),
 		t.stats)
+
+	server.Add(r, spec("explorer_charts", "Explorer charts",
+		`Time series from the explorer's statistics service. Without "chart", lists the available charts with id, section, description, units and resolutions: accounts (accountsGrowth, activeAccounts, newAccounts), transactions (newTxns, txnsGrowth, txnsFee, averageTxnFee, txnsSuccessRate), blocks (newBlocks, averageBlockSize, averageBlockRewards), LAX transfers (newNativeCoinTransfers), gas (averageGasPrice, averageGasLimit, averageGasUsed, gasUsedGrowth, networkUtilization) and contracts (newContracts, contractsGrowth, newVerifiedContracts, verifiedContractsGrowth).
+With "chart", returns its points (date, value) at "resolution" DAY (default), WEEK, MONTH or YEAR, from "from" to "to" (YYYY-MM-DD; by default the last 90 points), at most 400. Units are reported per chart (fees in LAX, gas prices in gwei); "approximate" marks a period still in progress. For the last 7 days of hashrate, difficulty, block time and node counts, use network_trends.`),
+		t.charts)
 }
 
 type tools struct{ r *server.Registrar }
@@ -749,16 +754,46 @@ func (t *tools) stats(ctx context.Context, _ noIn) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	var p server.Partial
+	out := map[string]any{}
+	if t.r.ExplorerStats != nil {
+		counters, err := t.r.ExplorerStats.Counters(ctx)
+		if err != nil {
+			p.Fail("explorer_stats_service", err)
+		}
+		type counter struct {
+			Value string `json:"value"`
+			Units string `json:"units,omitempty"`
+			Title string `json:"title"`
+		}
+		cs := map[string]counter{}
+		for _, ct := range counters {
+			u := ""
+			if ct.Units != nil {
+				u = *ct.Units
+			}
+			cs[ct.ID] = counter{Value: ct.Value, Units: u, Title: ct.Title}
+		}
+		if len(cs) > 0 {
+			out["counters"] = cs
+		}
+	}
 	s, err := c.Stats(ctx)
 	if err != nil {
-		return nil, err
+		if out["counters"] == nil {
+			return nil, err
+		}
+		p.Fail("explorer", err)
+	} else {
+		out["total_blocks"] = s.TotalBlocks
+		out["total_transactions"] = s.TotalTransactions
+		out["total_addresses"] = s.TotalAddresses
+		out["transactions_today"] = s.TransactionsToday
+		out["average_block_time_seconds"] = float64(int64(s.AverageBlockTime/10+0.5)) / 100
+		out["network_utilization_percentage"] = s.Utilization
 	}
-	return map[string]any{
-		"total_blocks":                   s.TotalBlocks,
-		"total_transactions":             s.TotalTransactions,
-		"total_addresses":                s.TotalAddresses,
-		"transactions_today":             s.TransactionsToday,
-		"average_block_time_seconds":     float64(int64(s.AverageBlockTime/10+0.5)) / 100,
-		"network_utilization_percentage": s.Utilization,
-	}, nil
+	if p.Errors != nil {
+		out["errors"] = p.Errors
+	}
+	return out, nil
 }

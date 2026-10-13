@@ -29,10 +29,12 @@ func Stdio(ctx context.Context, srv *mcp.Server) error {
 // behind per-client rate limiting and a concurrency cap, and /healthz.
 func Handler(cfg config.Config, srv *mcp.Server, log *slog.Logger) http.Handler {
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv }, &mcp.StreamableHTTPOptions{
-		// Every tool is a stateless read, so no session needs to outlive a
-		// request; this lets the deployment scale out behind a load balancer.
-		Stateless:           true,
-		JSONResponse:        true,
+		// Sessions carry resource subscriptions (new blocks, alerts). With
+		// --http-stateless every request stands alone, so replicas need no
+		// sticky load balancing, and responses are plain JSON.
+		Stateless:           cfg.HTTPStateless,
+		JSONResponse:        cfg.HTTPStateless,
+		SessionTimeout:      30 * time.Minute,
 		Logger:              log,
 		MaxRequestBodyBytes: 1 << 20,
 		// DNS-rebinding protection refuses loopback connections whose Host
@@ -83,9 +85,10 @@ func Serve(ctx context.Context, cfg config.Config, h http.Handler, log *slog.Log
 		Handler:           h,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      cfg.ToolTimeout + 15*time.Second,
-		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    32 << 10,
+		// Long enough for wait_for_new_block and streamed notifications.
+		WriteTimeout:   0,
+		IdleTimeout:    120 * time.Second,
+		MaxHeaderBytes: 32 << 10,
 	}
 	errc := make(chan error, 1)
 	go func() { errc <- hs.ListenAndServe() }()

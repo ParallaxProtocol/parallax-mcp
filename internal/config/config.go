@@ -56,7 +56,11 @@ type Config struct {
 	// stdio only: a remote deployment never publishes other operators' IPs.
 	ExposePeerAddresses bool `yaml:"expose_peer_addresses"`
 
-	HTTPAddr       string   `yaml:"http_addr"`
+	HTTPAddr string `yaml:"http_addr"`
+	// HTTPStateless serves every HTTP request without a session, so replicas
+	// behind a load balancer need no stickiness, at the cost of resource
+	// subscriptions.
+	HTTPStateless  bool     `yaml:"http_stateless"`
 	HTTPPath       string   `yaml:"http_path"`
 	RateLimit      float64  `yaml:"rate_limit"` // requests per second per client
 	RateBurst      int      `yaml:"rate_burst"`
@@ -73,6 +77,8 @@ type Config struct {
 	StatusCacheTTL   time.Duration `yaml:"status_cache_ttl"`
 	MaxResponseBytes int           `yaml:"max_response_bytes"`
 	MaxLogRange      uint64        `yaml:"max_log_range"`
+	HeadPollInterval time.Duration `yaml:"head_poll_interval"`
+	ExplorerStatsURL string        `yaml:"explorer_stats_url"`
 	MaxLogs          int           `yaml:"max_logs"`
 }
 
@@ -99,6 +105,7 @@ func Default() Config {
 		StatusCacheTTL:   15 * time.Second,
 		MaxResponseBytes: 256 << 10,
 		MaxLogRange:      10_000,
+		HeadPollInterval: 15 * time.Second,
 		MaxLogs:          500,
 	}
 }
@@ -126,6 +133,9 @@ func Load(args []string, getenv func(string) string, stderr io.Writer) (Config, 
 	fs.BoolVar(&f.AllowBroadcast, "allow-broadcast", false, "register broadcast_signed_tx (needs the tx group); the only tool that writes to the network")
 	fs.BoolVar(&f.ExposePeerAddresses, "expose-peer-addresses", false, "show peer IP addresses in node_peers (stdio only)")
 	fs.StringVar(&f.HTTPAddr, "http-addr", cfg.HTTPAddr, "listen address for the http transport")
+	fs.BoolVar(&f.HTTPStateless, "http-stateless", false, "serve http without sessions (for load-balanced replicas; disables resource subscriptions)")
+	fs.DurationVar(&f.HeadPollInterval, "head-poll-interval", cfg.HeadPollInterval, "how often the node is polled for new blocks while clients are subscribed or waiting")
+	fs.StringVar(&f.ExplorerStatsURL, "explorer-stats-url", "", "Blockscout stats service base URL (default: <explorer-url>/stats-service)")
 	fs.StringVar(&f.HTTPPath, "http-path", cfg.HTTPPath, "URL path of the MCP endpoint")
 	fs.Float64Var(&f.RateLimit, "rate-limit", cfg.RateLimit, "sustained requests per second per client on the http transport")
 	fs.IntVar(&f.RateBurst, "rate-burst", cfg.RateBurst, "burst size per client on the http transport")
@@ -176,6 +186,9 @@ func Load(args []string, getenv func(string) string, stderr io.Writer) (Config, 
 	apply("expose-peer-addresses", func() { cfg.ExposePeerAddresses = f.ExposePeerAddresses })
 	apply("http-addr", func() { cfg.HTTPAddr = f.HTTPAddr })
 	apply("http-path", func() { cfg.HTTPPath = f.HTTPPath })
+	apply("http-stateless", func() { cfg.HTTPStateless = f.HTTPStateless })
+	apply("head-poll-interval", func() { cfg.HeadPollInterval = f.HeadPollInterval })
+	apply("explorer-stats-url", func() { cfg.ExplorerStatsURL = f.ExplorerStatsURL })
 	apply("rate-limit", func() { cfg.RateLimit = f.RateLimit })
 	apply("rate-burst", func() { cfg.RateBurst = f.RateBurst })
 	apply("max-concurrent", func() { cfg.MaxConcurrent = f.MaxConcurrent })
@@ -248,6 +261,9 @@ func applyEnv(cfg *Config, getenv func(string) string) error {
 	boolean("EXPOSE_PEER_ADDRESSES", &cfg.ExposePeerAddresses)
 	str("HTTP_ADDR", &cfg.HTTPAddr)
 	str("HTTP_PATH", &cfg.HTTPPath)
+	boolean("HTTP_STATELESS", &cfg.HTTPStateless)
+	duration("HEAD_POLL_INTERVAL", &cfg.HeadPollInterval)
+	str("EXPLORER_STATS_URL", &cfg.ExplorerStatsURL)
 	parse("RATE_LIMIT", func(v string) (err error) { cfg.RateLimit, err = strconv.ParseFloat(v, 64); return })
 	integer("RATE_BURST", &cfg.RateBurst)
 	integer("MAX_CONCURRENT", &cfg.MaxConcurrent)
@@ -318,10 +334,24 @@ func (c *Config) Validate() error {
 	if c.MaxResponseBytes < 4096 {
 		bad("max_response_bytes must be at least 4096")
 	}
+	if c.HeadPollInterval < time.Second {
+		bad("head_poll_interval must be at least 1s")
+	}
 	if c.MaxLogRange == 0 || c.MaxLogs < 1 {
 		bad("max_log_range and max_logs must be positive")
 	}
 	return errors.Join(errs...)
+}
+
+// StatsURL is the Blockscout stats service base URL.
+func (c *Config) StatsURL() string {
+	if c.ExplorerStatsURL != "" {
+		return strings.TrimRight(c.ExplorerStatsURL, "/")
+	}
+	if c.ExplorerURL == "" {
+		return ""
+	}
+	return strings.TrimRight(c.ExplorerURL, "/") + "/stats-service"
 }
 
 // GroupEnabled reports whether the named tool group is on.
