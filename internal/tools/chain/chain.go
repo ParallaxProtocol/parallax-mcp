@@ -457,28 +457,12 @@ func (t *tools) getTransaction(ctx context.Context, in hashIn) (any, error) {
 	return out, nil
 }
 
-// decodeCall decodes calldata with the target's verified ABI, falling back
-// to the standard token ABI. An explorer failure is returned alongside the
-// fallback decoding.
 func (t *tools) decodeCall(ctx context.Context, to util.Address, input []byte) (*evm.Call, error) {
-	a, err := t.verifiedABI(ctx, to)
-	if a != nil {
-		if c := evm.DecodeCall(a, input, "verified"); c != nil {
-			return c, nil
-		}
-	}
-	return evm.DecodeCall(evm.StandardABI, input, "standard"), err
+	return evm.DecodeCalldata(ctx, t.r.Explorer, to, input)
 }
 
 func (t *tools) verifiedABI(ctx context.Context, addr util.Address) (*abi.ABI, error) {
-	if t.r.Explorer == nil {
-		return nil, nil
-	}
-	raw, err := t.r.Explorer.ABI(ctx, addr.Hex())
-	if err != nil || raw == nil {
-		return nil, err
-	}
-	return evm.ParseABI(raw)
+	return evm.VerifiedABI(ctx, t.r.Explorer, addr)
 }
 
 // ---- get_receipt ----

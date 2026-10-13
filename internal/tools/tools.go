@@ -8,6 +8,7 @@ import (
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/mempool"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/mining"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/network"
+	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/tx"
 )
 
 // All registers every group; each skips itself when disabled in config.
@@ -17,4 +18,5 @@ var All = []func(*server.Registrar){
 	mining.Register,
 	network.Register,
 	mempool.Register,
+	tx.Register,
 }
