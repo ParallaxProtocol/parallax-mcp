@@ -1,0 +1,15 @@
+[Unit]
+Description=Redeploy parallax-mcp on Coolify when a new image is published
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/parallax-mcp-autodeploy.env
+ExecStart=/usr/local/bin/coolify-autodeploy.sh
+StateDirectory=parallax-mcp-autodeploy
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes

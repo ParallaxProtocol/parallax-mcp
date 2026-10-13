@@ -307,6 +307,14 @@ PARALLAX_MCP_BEHIND_CLOUDFLARE=true      # when the domain is proxied by Cloudfl
 PARALLAX_MCP_RPC_URL=http://your-node:8545   # optional: a node with more namespaces
 ```
 
+To update it automatically on every release, track the `latest` tag and
+install the poller in [`deploy/`](deploy) on the Coolify server: a systemd
+timer runs `coolify-autodeploy.sh` every 5 minutes, which compares the
+image's digest on GHCR with the last one deployed and, when it changed,
+calls the Coolify API on `127.0.0.1` to redeploy. Nothing calls in from
+outside, so Coolify's API can be restricted to the server itself. CI then
+waits for the public server to report the new version.
+
 Leave Coolify's own health check off (it runs `curl` in the container,
 which the distroless image does not have); the image's Docker
 `HEALTHCHECK` runs `parallax-mcp healthcheck` instead. HTTP sessions
