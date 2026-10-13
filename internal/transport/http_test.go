@@ -31,7 +31,7 @@ func TestClientIP(t *testing.T) {
 		if tc.xff != "" {
 			r.Header.Set("X-Forwarded-For", tc.xff)
 		}
-		if got := ClientIP(r, proxies).String(); got != tc.want {
+		if got := ClientIP(r, proxies, false).String(); got != tc.want {
 			t.Errorf("%s / %q: got %s, want %s", tc.remote, tc.xff, got, tc.want)
 		}
 	}

@@ -58,7 +58,7 @@ func Handler(cfg config.Config, srv *mcp.Server, log *slog.Logger) http.Handler 
 		_, _ = w.Write([]byte("ok\n"))
 	})
 	mux.Handle(cfg.HTTPPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := ClientIP(r, proxies)
+		ip := ClientIP(r, proxies, cfg.BehindCloudflare)
 		if !lim.allow(ip) {
 			metrics.RateLimited()
 			w.Header().Set("Retry-After", "1")
@@ -73,7 +73,9 @@ func Handler(cfg config.Config, srv *mcp.Server, log *slog.Logger) http.Handler 
 			http.Error(w, "server busy", http.StatusServiceUnavailable)
 			return
 		}
-		mcpHandler.ServeHTTP(w, r)
+		ka := newKeepAlive(w)
+		defer ka.stop()
+		mcpHandler.ServeHTTP(ka, r)
 	}))
 	return mux
 }
@@ -106,10 +108,22 @@ func Serve(ctx context.Context, cfg config.Config, h http.Handler, log *slog.Log
 	return nil
 }
 
-// ClientIP returns the address to rate-limit by: the socket peer, or, when
-// the peer is a trusted proxy, the right-most X-Forwarded-For entry that is
-// not itself a trusted proxy.
-func ClientIP(r *http.Request, trusted []netip.Prefix) netip.Addr {
+// ClientIP returns the address to rate-limit by. The hop that reached this
+// deployment is the socket peer or, when the peer is a trusted proxy, the
+// right-most X-Forwarded-For entry that is not itself a trusted proxy. With
+// cloudflare set and that hop one of Cloudflare's edges, the visitor's
+// address from CF-Connecting-IP is used instead.
+func ClientIP(r *http.Request, trusted []netip.Prefix, cloudflare bool) netip.Addr {
+	hop := edgeHop(r, trusted)
+	if cloudflare {
+		if a, ok := fromCloudflare(r, hop); ok {
+			return a
+		}
+	}
+	return hop
+}
+
+func edgeHop(r *http.Request, trusted []netip.Prefix) netip.Addr {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr

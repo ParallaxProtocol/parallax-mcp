@@ -212,6 +212,7 @@ in that order of precedence. `parallax-mcp -help` lists them all.
 | `--rate-limit`, `--rate-burst` | `2`/s, `20` | Per client address, HTTP transport |
 | `--max-concurrent` | `64` | Requests in flight, HTTP transport |
 | `--trusted-proxies` | none | Proxies allowed to set `X-Forwarded-For` |
+| `--behind-cloudflare` | off | Take client addresses from `CF-Connecting-IP` on requests from Cloudflare's edge ranges |
 | `--metrics-addr` | off | Serve Prometheus `/metrics` on a separate listener |
 | `--max-response-bytes` | `262144` | Larger results fail with advice to narrow the query |
 | `--max-log-range`, `--max-logs` | `10000`, `500` | `get_logs` bounds |
@@ -269,12 +270,38 @@ docker run -d -p 8080:8080 \
 ```
 
 Put it behind a TLS-terminating reverse proxy and set `--trusted-proxies`
-to the proxy's address so rate limits apply per real client. HTTP sessions
+to the proxy's address so rate limits apply per real client.
+
+**Behind Cloudflare**, also set `--behind-cloudflare`
+(`PARALLAX_MCP_BEHIND_CLOUDFLARE=true`): the client address is then read
+from `CF-Connecting-IP`, but only on requests whose hop into your proxy is
+one of Cloudflare's published edge ranges, so nobody reaching the origin
+directly can choose their address. Cloudflare closes responses that stay
+silent for 100 seconds; the server keeps them open by pinging the client
+every 25 seconds on a running tool call's stream (which also sends the
+response headers early) and writing comment lines on idle notification
+streams. Exempt the MCP hostname from Bot Fight Mode and other challenge
+features (Security → WAF → custom rule: hostname equals your MCP host,
+action Skip), since MCP clients cannot solve browser challenges.
+
+### Coolify
+
+Create a **Docker Image** resource with `ghcr.io/parallaxprotocol/parallax-mcp:<version>`,
+set the domain and **Ports Exposes** `8080`, and add:
+
+```
+PARALLAX_MCP_TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12
+PARALLAX_MCP_BEHIND_CLOUDFLARE=true      # when the domain is proxied by Cloudflare
+PARALLAX_MCP_RPC_URL=http://your-node:8545   # optional: a node with more namespaces
+```
+
+Leave Coolify's own health check off (it runs `curl` in the container,
+which the distroless image does not have); the image's Docker
+`HEALTHCHECK` runs `parallax-mcp healthcheck` instead. HTTP sessions
 live in memory, so several replicas need sticky load balancing on the
 `Mcp-Session-Id` header, or `--http-stateless`, which gives up resource
 subscriptions. The proxy must allow long-lived responses (server-sent events
-and `wait_for_new_block`, which sends progress notifications every 15
-seconds to clients that ask for them).
+and `wait_for_new_block`); the keep-alives described above keep them busy.
 `/healthz` answers `ok`; with `--metrics-addr`, Prometheus metrics count
 tool calls by tool and outcome (`ok`, `error`, `partial`), tool and backend
 latency, backend retries and errors, and rate-limited requests. Logs are

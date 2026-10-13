@@ -66,6 +66,9 @@ type Config struct {
 	RateBurst      int      `yaml:"rate_burst"`
 	MaxConcurrent  int      `yaml:"max_concurrent"`
 	TrustedProxies []string `yaml:"trusted_proxies"`
+	// BehindCloudflare takes the client address from CF-Connecting-IP on
+	// requests that reach the server from Cloudflare's edge ranges.
+	BehindCloudflare bool `yaml:"behind_cloudflare"`
 
 	MetricsAddr string `yaml:"metrics_addr"`
 	LogLevel    string `yaml:"log_level"`
@@ -141,6 +144,7 @@ func Load(args []string, getenv func(string) string, stderr io.Writer) (Config, 
 	fs.IntVar(&f.RateBurst, "rate-burst", cfg.RateBurst, "burst size per client on the http transport")
 	fs.IntVar(&f.MaxConcurrent, "max-concurrent", cfg.MaxConcurrent, "maximum requests in flight on the http transport")
 	fs.StringVar(&proxies, "trusted-proxies", "", "comma-separated proxy addresses or CIDRs allowed to set X-Forwarded-For")
+	fs.BoolVar(&f.BehindCloudflare, "behind-cloudflare", false, "take client addresses from CF-Connecting-IP on requests from Cloudflare's edge")
 	fs.StringVar(&f.MetricsAddr, "metrics-addr", "", "listen address for Prometheus /metrics (disabled when empty)")
 	fs.StringVar(&f.LogLevel, "log-level", cfg.LogLevel, "debug, info, warn or error")
 	fs.StringVar(&f.LogFormat, "log-format", cfg.LogFormat, `"json" or "text" (always written to stderr)`)
@@ -193,6 +197,7 @@ func Load(args []string, getenv func(string) string, stderr io.Writer) (Config, 
 	apply("rate-burst", func() { cfg.RateBurst = f.RateBurst })
 	apply("max-concurrent", func() { cfg.MaxConcurrent = f.MaxConcurrent })
 	apply("trusted-proxies", func() { cfg.TrustedProxies = splitList(proxies) })
+	apply("behind-cloudflare", func() { cfg.BehindCloudflare = f.BehindCloudflare })
 	apply("metrics-addr", func() { cfg.MetricsAddr = f.MetricsAddr })
 	apply("log-level", func() { cfg.LogLevel = f.LogLevel })
 	apply("log-format", func() { cfg.LogFormat = f.LogFormat })
@@ -268,6 +273,7 @@ func applyEnv(cfg *Config, getenv func(string) string) error {
 	integer("RATE_BURST", &cfg.RateBurst)
 	integer("MAX_CONCURRENT", &cfg.MaxConcurrent)
 	list("TRUSTED_PROXIES", &cfg.TrustedProxies)
+	boolean("BEHIND_CLOUDFLARE", &cfg.BehindCloudflare)
 	str("METRICS_ADDR", &cfg.MetricsAddr)
 	str("LOG_LEVEL", &cfg.LogLevel)
 	str("LOG_FORMAT", &cfg.LogFormat)

@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -96,6 +97,40 @@ func (r *Registrar) subscribe(_ context.Context, req *mcp.SubscribeRequest) erro
 		fn()
 	}
 	return nil
+}
+
+// PingInterval is how often a running tool call pings the client over
+// HTTP. The SDK sends the ping on the call's own event stream, which makes
+// the response start (its headers are otherwise held until the result) and
+// keeps bytes flowing, so proxies such as Cloudflare, which give up on a
+// response after 100 silent seconds, keep slow calls open.
+var PingInterval = 25 * time.Second
+
+// keepCallAlive pings the client until done is closed, with at most one
+// ping outstanding: a client that does not answer gets no pile-up.
+func keepCallAlive(ctx context.Context, req *mcp.CallToolRequest, done <-chan struct{}) {
+	if req == nil || req.Session == nil {
+		return
+	}
+	t := time.NewTicker(PingInterval)
+	defer t.Stop()
+	var pending atomic.Bool
+	for {
+		select {
+		case <-done:
+			return
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if !pending.CompareAndSwap(false, true) {
+				continue
+			}
+			go func() {
+				defer pending.Store(false)
+				_ = req.Session.Ping(ctx, nil)
+			}()
+		}
+	}
 }
 
 type requestKey struct{}
@@ -202,6 +237,7 @@ func Add[In any](r *Registrar, spec Spec, h func(ctx context.Context, in In) (an
 	}
 	requires := spec.Requires
 	n := r.Node
+	httpTransport := r.Cfg.Transport == config.TransportHTTP && !r.Cfg.HTTPStateless
 
 	mcp.AddTool(r.srv, tool, func(ctx context.Context, req *mcp.CallToolRequest, in In) (res *mcp.CallToolResult, out any, err error) {
 		start := time.Now()
@@ -224,6 +260,11 @@ func Add[In any](r *Registrar, spec Spec, h func(ctx context.Context, in In) (an
 
 		ctx, cancel := context.WithTimeout(context.WithValue(ctx, requestKey{}, req), timeout)
 		defer cancel()
+		if httpTransport {
+			done := make(chan struct{})
+			defer close(done)
+			go keepCallAlive(ctx, req, done)
+		}
 
 		if requires != "" && r.modules == nil && !n.Has(ctx, requires) {
 			outcome = "error"

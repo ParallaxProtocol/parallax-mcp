@@ -27,6 +27,7 @@ rate_limit: 2              # sustained requests per second per client address
 rate_burst: 20
 max_concurrent: 64
 trusted_proxies: []        # e.g. [10.0.0.0/8] behind a reverse proxy; enables X-Forwarded-For
+behind_cloudflare: false   # true when proxied by Cloudflare: client address from CF-Connecting-IP
 
 metrics_addr: ""           # e.g. 127.0.0.1:9090 to serve Prometheus /metrics
 log_level: info

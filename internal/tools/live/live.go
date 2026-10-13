@@ -20,7 +20,11 @@ import (
 const (
 	defaultWait = 120 * time.Second
 	maxWait     = 600 * time.Second
-	maxWaiters  = 32
+	// statelessMaxWait bounds waits on --http-stateless, whose plain JSON
+	// responses carry no keep-alives: proxies close silent responses after
+	// 60 to 100 seconds.
+	statelessMaxWait = 90 * time.Second
+	maxWaiters       = 32
 )
 
 // Register adds the live resources and, with the chain group, the
@@ -61,16 +65,20 @@ func Register(r *server.Registrar) {
 		r.Subscribable(watch.AlertsURI, w.Interest)
 	}
 
+	waitLimit, waitDefault := maxWait, defaultWait
+	if r.Cfg.Transport == config.TransportHTTP && r.Cfg.HTTPStateless {
+		waitLimit, waitDefault = statelessMaxWait, statelessMaxWait
+	}
 	waiters := make(chan struct{}, maxWaiters)
 	server.Add(r, server.Spec{Group: config.GroupChain, Name: "wait_for_new_block", Title: "Wait for a new block",
-		Timeout: maxWait + 30*time.Second,
+		Timeout: waitLimit + 30*time.Second,
 		Description: `Waits until the chain has a block above "after_block" (default: the current head) and returns it: number, hash, parent hash, timestamp, miner, difficulty, gas used, transaction count and subsidy, with a reorg marker if the tip was replaced instead. Blocks come every 10 minutes on average, but intervals vary widely, so a wait can time out: then it returns "new_block": false with the current head, and you can call it again.
-"timeout_seconds" defaults to 120, at most 600. For clients that support resource subscriptions, subscribing to parallax://chain/head is the better way to follow the chain. Use this to wait for a transaction's next confirmation, then check it with get_receipt.`,
+"timeout_seconds" defaults to 120, at most 600 (90 on servers running without HTTP sessions). For clients that support resource subscriptions, subscribing to parallax://chain/head is the better way to follow the chain. Use this to wait for a transaction's next confirmation, then check it with get_receipt.`,
 	}, func(ctx context.Context, in waitIn) (any, error) {
-		timeout := defaultWait
+		timeout := waitDefault
 		if in.TimeoutSeconds != 0 {
-			if in.TimeoutSeconds < 1 || in.TimeoutSeconds > int(maxWait/time.Second) {
-				return nil, server.Inputf("timeout_seconds must be between 1 and %d", int(maxWait/time.Second))
+			if in.TimeoutSeconds < 1 || in.TimeoutSeconds > int(waitLimit/time.Second) {
+				return nil, server.Inputf("timeout_seconds must be between 1 and %d on this server", int(waitLimit/time.Second))
 			}
 			timeout = time.Duration(in.TimeoutSeconds) * time.Second
 		}
