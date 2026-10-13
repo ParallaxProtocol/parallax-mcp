@@ -42,7 +42,7 @@ func Register(r *server.Registrar) {
 	}, t.chainInfo)
 
 	server.Add(r, server.Spec{Group: group, Name: "get_block", Title: "Get block",
-		Description: `A block by number, hash or "latest". Returns number, hash, parent hash, timestamp (Unix seconds), seconds since its parent (block time; the target is 600), miner, difficulty, gas used/limit, size in bytes, Parallax's epochStartTime, extraData (as untrusted text when printable), the block subsidy in wei and LAX, and its transactions.
+		Description: `A block by number, hash or "latest". Returns number, hash, parent hash, timestamp (Unix seconds), seconds since its parent (block time; the target is 600), miner, difficulty, gas used/limit, size in bytes, epochStartTime (a Parallax header field: the timestamp of the last block at a multiple of 2016), extraData (as untrusted text when printable), the block subsidy in wei and LAX, and its transactions.
 By default transactions are listed as hashes; with full_transactions=true each has from, to, value (wei and LAX), gas price (wei), nonce and the 4-byte selector of its calldata. At most 200 transactions are listed (Parallax blocks rarely have more); "transactions_truncated" says when the list was cut.
 Examples: {"block": "latest"}, {"block": "59633", "full_transactions": true}, {"block": "0x7019…31e0"}.`,
 	}, t.getBlock)

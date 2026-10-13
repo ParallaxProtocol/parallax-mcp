@@ -2,6 +2,8 @@
 package tools
 
 import (
+	"github.com/ParallaxProtocol/parallax-mcp/internal/prompts"
+	"github.com/ParallaxProtocol/parallax-mcp/internal/resources"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/server"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/chain"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/explorer"
@@ -11,7 +13,8 @@ import (
 	"github.com/ParallaxProtocol/parallax-mcp/internal/tools/tx"
 )
 
-// All registers every group; each skips itself when disabled in config.
+// All registers every tool group, the resources and the prompts; each group
+// skips itself when disabled in config.
 var All = []func(*server.Registrar){
 	chain.Register,
 	explorer.Register,
@@ -19,4 +22,6 @@ var All = []func(*server.Registrar){
 	network.Register,
 	mempool.Register,
 	tx.Register,
+	resources.Register,
+	prompts.Register,
 }

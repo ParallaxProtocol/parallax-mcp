@@ -1,0 +1,12 @@
+{
+  "docs": {
+    "repository": "github.com/ParallaxProtocol/parallax",
+    "ref": "main",
+    "commit": "06d51f230a5e5e182ca4bf1b2acfaf2cc7b68fec",
+    "version": "v2.1.x"
+  },
+  "pips": {
+    "discussions": "https://github.com/ParallaxProtocol/parallax/discussions",
+    "fetched": "2026-10-13T05:41:26Z"
+  }
+}
