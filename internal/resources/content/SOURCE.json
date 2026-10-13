@@ -2,11 +2,11 @@
   "docs": {
     "repository": "github.com/ParallaxProtocol/parallax",
     "ref": "main",
-    "commit": "06d51f230a5e5e182ca4bf1b2acfaf2cc7b68fec",
+    "commit": "da1a19c939792e97e3930527822241cf31a5eb5b",
     "version": "v2.1.x"
   },
   "pips": {
     "discussions": "https://github.com/ParallaxProtocol/parallax/discussions",
-    "fetched": "2026-10-13T05:41:26Z"
+    "fetched": "2026-10-13T07:21:48Z"
   }
 }

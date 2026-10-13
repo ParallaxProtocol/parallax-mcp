@@ -48,7 +48,7 @@ while IFS= read -r d; do
 	{
 		printf -- '---\ntitle: %s\nsource: %s\nupdated: %s\nfetched: %s\n---\n\n' \
 			"$(jq -r .title <<<"$d")" "$(jq -r .url <<<"$d")" "$(jq -r .updatedAt <<<"$d")" "$fetched"
-		jq -r .body <<<"$d"
+		jq -r .body <<<"$d" | tr -d '\r'
 	} >"$out/pips/pip-$id.md"
 	echo "pip: PIP-$id from $(jq -r .url <<<"$d")"
 done
