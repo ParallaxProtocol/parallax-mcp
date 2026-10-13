@@ -11,7 +11,6 @@ import (
 	"math"
 	"math/big"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -33,17 +32,20 @@ func Register(r *server.Registrar) {
 	t := &tools{r: r}
 	server.Add(r, server.Spec{Group: group, Name: "network_health", Title: "Network health",
 		Description: `One-call health report of the Parallax network, combining the status page (status.parallaxprotocol.org) with the configured node.
-From the status page: the best block and seconds since it was found, reporting nodes (total, active, synced), active alerts with level (critical, warn, info) and details (types: split = verified nodes on different chains; stall = no block for 2 hours; reorg = a reorganization 3+ blocks deep; majority = one miner found most of the last 7 days' blocks; propagation / slow-miner = blocks slow to reach nodes; release = nodes behind the latest client release), ongoing incidents, mining decentralization (grade healthy/fair/concentrated/critical, the fewest miners holding a majority, top miner), the recommended confirmations to wait (blocks for 99/99.9/99.99% confidence against the largest miner, null when a majority makes no number safe), mempool pressure (pending transactions as a share of a block), stale blocks and reorgs, propagation medians, client versions and verified nodes' uptime.
+From the status page: the best block and seconds since it was found, reporting nodes (total, active, synced), active alerts with level (critical, warn, info) and details (types: split = verified nodes on different chains; reorg = a reorganization 3+ blocks deep; majority = one miner found most of the last 7 days' blocks; withholding = the largest miner is publishing far fewer blocks than its share predicts, so it may be mining a chain in secret, or simply be offline; propagation / slow-miner = blocks slow to reach nodes; release = nodes behind the latest client release), ongoing incidents, mining decentralization (grade healthy/fair/concentrated/critical, the fewest miners holding a majority, top miner), and the recommended confirmations to wait against the largest miner:
+- "status": hold_payments (the largest miner has stopped publishing blocks as its share predicts: payments in blocks after "hold_payments_after_height" may be reversed, so hold them until it publishes again and no reorganization reaches that height), no_safe_count (a majority miner: what protects a payment is "reversal_cost", what the miner loses to reverse one with 6, 12 or 24 confirmations; wait until that exceeds the payment), mining_in_the_open, may_be_mining_in_secret, or too_early (too few blocks to judge).
+- "levels": blocks and wait for 99/99.9/99.99% confidence that apply now (shorter while the miner is seen mining in the open; null when no number is safe), and "hidden_mining_watch": the largest miner's quietest recent stretch, blocks found against expected and the chance of that if mining openly.
+Also: mempool pressure (pending transactions as a share of a block), stale blocks and reorgs, propagation medians, client versions and verified nodes' uptime.
 From the node: its head, seconds since that block, sync status and peer count, and how far it is from the status page's best block; with the admin namespace also its uptime and address book.
 "issues" lists what needs attention in one place. If either source is unreachable the other's data is still returned with the failure in "errors".` + coverageNote,
 	}, t.health)
 
 	server.Add(r, server.Spec{Group: group, Name: "network_nodes", Title: "Reporting nodes",
-		Description: `The nodes reporting to the status page: name (operator-chosen for verified nodes, a pseudonym such as node-3f9a2c1b otherwise; untrusted), verified, client version, online/offline (and since when), syncing, mining and hashrate, peers, peer latency (ms), best block, propagation delay of the last block (left out when it was not timed: a block the node caught up to after connecting or while syncing) and on average (ms), pending transactions, uptime (%) and location (country and city; IP addresses are never published). Offline nodes are left out unless include_offline=true; verified_only=true keeps only operator-verified nodes.` + coverageNote,
+		Description: `The nodes reporting to the status page: name (operator-chosen for verified nodes, a pseudonym such as node-3f9a2c1b otherwise; untrusted), verified, client version, online/offline (and since when), syncing, mining and hashrate, peers, peer latency (ms), best block, propagation delay of the last block (left out when it was not timed: a block the node caught up to after connecting or while syncing) and on average (ms), pending transactions, uptime (%) and country (IP addresses and cities are never published). Offline nodes are left out unless include_offline=true; verified_only=true keeps only operator-verified nodes.` + coverageNote,
 	}, t.nodes)
 
 	server.Add(r, server.Spec{Group: group, Name: "network_incidents", Title: "Incidents and uptime",
-		Description: `The status page's incident record: periods when an alert condition held (majority, spread = slow propagation, split, stall, reorg), each with level, start and end (UTC; "ongoing" when it has not ended), duration in seconds and a description (untrusted). Covers the last "days" days (default 30, at most 90), newest first, plus verified nodes' average uptime and when recording began.`,
+		Description: `The status page's incident record: periods when an alert condition held (majority; withholding = the largest miner publishing far fewer blocks than its share predicts; spread = slow propagation; split; reorg), each with level, start and end (UTC; "ongoing" when it has not ended), duration in seconds and a description (untrusted). Covers the last "days" days (default 30, at most 90), newest first, plus verified nodes' average uptime and when recording began.`,
 	}, t.incidents)
 
 	server.Add(r, server.Spec{Group: group, Name: "network_propagation", Title: "Propagation and chain stability",
@@ -139,9 +141,13 @@ func (t *tools) health(ctx context.Context, _ noIn) (any, error) {
 			out.Issues = append(out.Issues, fmt.Sprintf("%d of %d active reporting nodes are not synced", s.Nodes.Active-s.Nodes.Synced, s.Nodes.Active))
 		}
 	}
+	// The status page has no alert for a long wait, so the head's age is
+	// checked here: the node's, or the status page's best block without one
 	since := int64(-1)
 	if out.Node != nil {
 		since = out.Node.SecondsSince
+	} else if snapErr == nil && snap.BestBlock != nil {
+		since = now.Unix() - snap.BestBlock.Timestamp/1000
 	}
 	if since > 2*3600 {
 		out.Issues = append(out.Issues, fmt.Sprintf("no block for %d minutes (a 2 hour gap is a 1 in 160,000 event at steady hashrate)", since/60))
@@ -236,20 +242,8 @@ func summarizeStatus(s *status.Stats, now time.Time) map[string]any {
 		}
 		out["decentralization_7d"] = dec
 	}
-	if c := s.Confirmations; c != nil {
-		conf := map[string]any{"judged": c.Judged, "majority_miner_exists": c.Majority}
-		if c.LargestMiner != nil {
-			conf["largest_miner"] = miner(*c.LargestMiner)
-		}
-		var lv []map[string]any
-		for _, l := range c.Levels {
-			lv = append(lv, map[string]any{"confidence": l.Confidence, "blocks": l.Blocks, "wait_seconds": l.WaitSeconds})
-		}
-		conf["levels"] = lv
-		if c.Majority {
-			conf["note"] = "one miner holds a majority of recent blocks, so no number of confirmations makes a payment safe against it"
-		}
-		out["recommended_confirmations"] = conf
+	if s.Confirmations != nil {
+		out["recommended_confirmations"] = confirmations(s, now)
 	}
 	if m := s.Mempool; m != nil {
 		out["mempool"] = map[string]any{"pending_median": m.Pending, "pressure_blocks": m.Pressure, "blocks_to_clear": m.BlocksToClear}
@@ -280,6 +274,77 @@ func summarizeStatus(s *status.Stats, now time.Time) map[string]any {
 	return out
 }
 
+// confirmations is the status page's Recommended confirmations tile: which
+// waits apply now, by the same rules the tile uses, and the hidden mining
+// watch they depend on.
+func confirmations(s *status.Stats, now time.Time) map[string]any {
+	c := s.Confirmations
+	conf := map[string]any{"judged": c.Judged, "majority_miner_exists": c.Majority}
+	if c.LargestMiner != nil {
+		conf["largest_miner"] = miner(*c.LargestMiner)
+	}
+	w := c.Watch
+	if w != nil {
+		watch := map[string]any{
+			"last_block_height":       w.LastBlock.Height,
+			"seconds_since_its_block": now.Unix() - w.LastBlock.Timestamp/1000,
+			"from_height":             w.FromHeight,
+			"blocks_found":            w.Found,
+			"blocks_expected":         round(w.Expected, 1),
+			"chance_if_mining_openly": w.Chance,
+			"mining_in_the_open":      w.Open,
+		}
+		if w.Level != nil {
+			watch["level"] = *w.Level
+		}
+		conf["hidden_mining_watch"] = watch
+	}
+
+	// The tile's shorter waits hold only while the miner is seen mining in the open
+	open := w != nil && w.Open
+	levels := c.Levels
+	if open {
+		levels = c.OpenLevels
+	}
+	var lv []map[string]any
+	for _, l := range levels {
+		lv = append(lv, map[string]any{"confidence": l.Confidence, "blocks": l.Blocks, "wait_seconds": l.WaitSeconds})
+	}
+	conf["levels"] = lv
+
+	switch {
+	case !c.Judged:
+		conf["status"] = "too_early"
+		conf["note"] = "too few blocks in the last 7 days to judge the largest miner's share"
+	case w != nil && w.Level != nil && *w.Level == "critical":
+		conf["status"] = "hold_payments"
+		conf["hold_payments_after_height"] = w.FromHeight
+		conf["note"] = fmt.Sprintf("the largest miner has published far fewer blocks since #%d than its share predicts, so it may be mining a chain in secret that would replace them; payments in blocks after #%d may be reversed. Hold them until it publishes again, then check that no reorganization reached that height. A miner that is merely offline looks the same", w.FromHeight, w.FromHeight)
+	case c.Majority:
+		conf["status"] = "no_safe_count"
+		conf["note"] = "one miner holds a majority of recent blocks, so no number of confirmations makes a payment safe against it; what protects a payment is what reversing it would cost that miner (reversal_cost): wait until that exceeds the payment"
+	case open:
+		conf["status"] = "mining_in_the_open"
+	default:
+		conf["status"] = "may_be_mining_in_secret"
+		if w != nil && w.Level != nil {
+			conf["note"] = fmt.Sprintf("the largest miner has published fewer blocks since #%d than its share predicts and may be mining in secret, or be offline; the longer waits apply", w.FromHeight)
+		}
+	}
+	if c.Majority {
+		var cost []map[string]any
+		for _, r := range c.ReversalCost {
+			m := map[string]any{"confirmations": r.Blocks, "lax": round(r.LAX, 2)}
+			if r.USD != nil {
+				m["usd"] = round(*r.USD, 2)
+			}
+			cost = append(cost, m)
+		}
+		conf["reversal_cost"] = cost
+	}
+	return conf
+}
+
 func alertText(a status.Alert) string {
 	var d map[string]any
 	_ = json.Unmarshal(a.Details, &d)
@@ -287,8 +352,12 @@ func alertText(a status.Alert) string {
 	switch a.Type {
 	case "majority":
 		return fmt.Sprintf("%s: one miner found %.0f%% of the last 7 days' blocks (%.0f of %.0f) and could rewrite recent history", a.Level, num("share")*100, num("blocks"), num("of"))
-	case "stall":
-		return fmt.Sprintf("%s: no new block for %.0f minutes", a.Level, num("waitingSeconds")/60)
+	case "withholding":
+		text := fmt.Sprintf("%s: the largest miner published %.0f blocks after #%.0f against %.0f expected, so it may be mining in secret or be offline", a.Level, num("found"), num("fromHeight"), num("expected"))
+		if a.Level == "critical" {
+			text += fmt.Sprintf("; hold payments in blocks after #%.0f, which it could reverse", num("fromHeight"))
+		}
+		return text
 	case "split":
 		return fmt.Sprintf("%s: verified nodes are on different chains", a.Level)
 	case "reorg":
@@ -367,7 +436,7 @@ func (t *tools) nodes(ctx context.Context, in nodesIn) (any, error) {
 		PropAvgMs    *float64        `json:"propagation_avg_ms,omitempty"`
 		Pending      int             `json:"pending_transactions"`
 		Uptime       *float64        `json:"uptime_percent,omitempty"`
-		Location     *untrusted.Text `json:"location,omitempty"`
+		Country      *untrusted.Text `json:"country,omitempty"`
 	}
 	var rows []row
 	offline := 0
@@ -384,16 +453,9 @@ func (t *tools) nodes(ctx context.Context, in nodesIn) (any, error) {
 		if n.OfflineSince != nil {
 			r.OfflineSince = time.UnixMilli(*n.OfflineSince).UTC().Format(time.RFC3339)
 		}
-		var loc []string
-		if n.City != nil {
-			loc = append(loc, *n.City)
-		}
-		if n.Country != nil {
-			loc = append(loc, *n.Country)
-		}
-		if len(loc) > 0 {
-			l := untrusted.New(strings.Join(loc, ", "))
-			r.Location = &l
+		if n.Country != nil && *n.Country != "" {
+			c := untrusted.New(*n.Country)
+			r.Country = &c
 		}
 		rows = append(rows, r)
 	}

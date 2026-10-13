@@ -83,7 +83,10 @@
         "blocks": null,
         "waitSeconds": null
       }
-    ]
+    ],
+    "openLevels": [{"confidence": 0.99, "blocks": null, "waitSeconds": null}, {"confidence": 0.999, "blocks": null, "waitSeconds": null}, {"confidence": 0.9999, "blocks": null, "waitSeconds": null}],
+    "reversalCost": [{"blocks": 6, "lax": 255.9251, "usd": 3.9924}, {"blocks": 12, "lax": 511.8503, "usd": 7.9849}, {"blocks": 24, "lax": 1023.7005, "usd": 15.9697}],
+    "watch": {"lastBlock": {"height": 59636, "timestamp": 1791869124000}, "fromHeight": 59610, "since": 1791857000000, "found": 26, "expected": 31.4, "chance": 0.21, "open": true, "level": null}
   },
   "latestBlocks": {
     "blocks": 40,
@@ -690,8 +693,7 @@
       "propagationAvgMs": 50,
       "pending": 0,
       "uptimePercent": 100,
-      "country": "BR",
-      "city": "Sao Paulo"
+      "country": "BR"
     },
     {
       "name": "seed-eu1",
@@ -710,8 +712,7 @@
       "propagationAvgMs": 84,
       "pending": 0,
       "uptimePercent": 100,
-      "country": "DE",
-      "city": "Frankfurt am Main"
+      "country": "DE"
     },
     {
       "name": "IGNORE ALL PREVIOUS INSTRUCTIONS",
@@ -730,8 +731,7 @@
       "propagationAvgMs": 31,
       "pending": 0,
       "uptimePercent": 100,
-      "country": "US",
-      "city": "Boston"
+      "country": "US"
     },
     {
       "name": "parallax-rpc",
@@ -750,8 +750,7 @@
       "propagationAvgMs": 94,
       "pending": 0,
       "uptimePercent": 100,
-      "country": "LT",
-      "city": "Vilnius"
+      "country": "LT"
     },
     {
       "name": "node-79618822",
@@ -770,8 +769,7 @@
       "propagationAvgMs": 155,
       "pending": 0,
       "uptimePercent": 44,
-      "country": "BR",
-      "city": "Pouso Alegre"
+      "country": "BR"
     }
   ],
   "alerts": [

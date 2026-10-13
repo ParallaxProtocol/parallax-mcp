@@ -1,6 +1,7 @@
 package network_test
 
 import (
+	"encoding/json"
 	"os"
 	"slices"
 	"strings"
@@ -17,6 +18,20 @@ import (
 // October 2026), with a hostile node name added.
 func statsJSON(t *testing.T) string {
 	b, err := os.ReadFile("testdata/stats.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// statsWith is the fixture with edit applied to its decoded JSON.
+func statsWith(t *testing.T, edit func(s map[string]any)) string {
+	var s map[string]any
+	if err := json.Unmarshal([]byte(statsJSON(t)), &s); err != nil {
+		t.Fatal(err)
+	}
+	edit(s)
+	b, err := json.Marshal(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,5 +185,85 @@ func TestTrends(t *testing.T) {
 	}
 	if _, errText := e.Call(t, "network_trends", map[string]any{"metrics": []any{"price"}}); errText == "" {
 		t.Fatal("unknown metric accepted")
+	}
+}
+
+func TestConfirmationsAgainstMajority(t *testing.T) {
+	e := newEnv(t, nil)
+	conf := testutil.Get(e.MustCall(t, "network_health", nil), "status_page", "recommended_confirmations")
+	if testutil.Get(conf, "status") != "no_safe_count" || testutil.Get(conf, "levels", 1, "blocks") != nil {
+		t.Fatalf("got %v", conf)
+	}
+	if testutil.Get(conf, "reversal_cost", 0, "confirmations") != float64(6) || testutil.Get(conf, "reversal_cost", 0, "usd") == nil {
+		t.Fatalf("reversal cost: %v", testutil.Get(conf, "reversal_cost"))
+	}
+	if testutil.Get(conf, "hidden_mining_watch", "mining_in_the_open") != true {
+		t.Fatalf("watch: %v", testutil.Get(conf, "hidden_mining_watch"))
+	}
+}
+
+func TestConfirmationsHoldPayments(t *testing.T) {
+	e := newEnv(t, func(e *testutil.Env) {
+		e.Status.Route("/api/v2/stats", statsWith(t, func(s map[string]any) {
+			w := s["confirmations"].(map[string]any)["watch"].(map[string]any)
+			w["found"], w["expected"], w["chance"], w["open"], w["level"] = 0, 18.2, 5e-7, false, "critical"
+			s["alerts"] = append(s["alerts"].([]any), map[string]any{"type": "withholding", "level": "critical", "since": 1791857000000,
+				"details": map[string]any{"name": "rplant.xyz", "fromHeight": 59610, "found": 0, "expected": 18.2, "chance": 5e-7, "open": false}})
+		}))
+	})
+	out := e.MustCall(t, "network_health", nil)
+	conf := testutil.Get(out, "status_page", "recommended_confirmations")
+	if testutil.Get(conf, "status") != "hold_payments" || testutil.Get(conf, "hold_payments_after_height") != float64(59610) {
+		t.Fatalf("got %v", conf)
+	}
+	if issues := strings.Join(toStrings(out["issues"]), "\n"); !strings.Contains(issues, "hold payments in blocks after #59610") {
+		t.Fatalf("issues: %s", issues)
+	}
+}
+
+func TestConfirmationsOpenLevelsApplyWhileMiningOpenly(t *testing.T) {
+	minority := func(open bool) string {
+		return statsWith(t, func(s map[string]any) {
+			c := s["confirmations"].(map[string]any)
+			c["majority"] = false
+			c["largestMiner"].(map[string]any)["share"] = 0.3
+			c["levels"].([]any)[1].(map[string]any)["blocks"] = 32
+			c["openLevels"].([]any)[1].(map[string]any)["blocks"] = 19
+			c["watch"].(map[string]any)["open"] = open
+		})
+	}
+	for _, tc := range []struct {
+		open   bool
+		blocks float64
+		status string
+	}{{true, 19, "mining_in_the_open"}, {false, 32, "may_be_mining_in_secret"}} {
+		e := newEnv(t, func(e *testutil.Env) { e.Status.Route("/api/v2/stats", minority(tc.open)) })
+		conf := testutil.Get(e.MustCall(t, "network_health", nil), "status_page", "recommended_confirmations")
+		if testutil.Get(conf, "levels", 1, "blocks") != tc.blocks || testutil.Get(conf, "status") != tc.status || testutil.Get(conf, "reversal_cost") != nil {
+			t.Fatalf("open=%v: %v", tc.open, conf)
+		}
+	}
+}
+
+func TestHealthLongWaitFromStatusPageWithoutNode(t *testing.T) {
+	e := newEnv(t, func(e *testutil.Env) {
+		e.Node.Fail = 502
+		// The fixture's best block is from 1791869124
+		e.Now = time.Unix(1791869124+3*3600, 0)
+	})
+	issues := strings.Join(toStrings(e.MustCall(t, "network_health", nil)["issues"]), "\n")
+	if !strings.Contains(issues, "no block for 180 minutes") {
+		t.Fatalf("issues: %s", issues)
+	}
+}
+
+func TestNodesGiveCountryOnly(t *testing.T) {
+	e := newEnv(t, nil)
+	n := testutil.Get(e.MustCall(t, "network_nodes", nil), "nodes", 0).(map[string]any)
+	if _, ok := n["country"]; !ok {
+		t.Fatalf("no country: %v", n)
+	}
+	if _, ok := n["location"]; ok {
+		t.Fatalf("location is gone from the status page: %v", n)
 	}
 }

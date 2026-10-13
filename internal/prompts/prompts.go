@@ -98,7 +98,7 @@ func healthReport(cfg config.Config) mcp.PromptHandler {
 		if cfg.GroupEnabled(config.GroupMempool) {
 			b.WriteString("4. mempool_status for pending transactions.\n")
 		}
-		b.WriteString("\nStructure: a one-paragraph verdict first, then sections for block production, mining and security, nodes and clients, and incidents. Explain what each problem means in practice; in particular, if one miner holds a majority, say plainly that it could reverse recent payments and that confirmation counts do not protect against it. ")
+		b.WriteString("\nStructure: a one-paragraph verdict first, then sections for block production, mining and security, nodes and clients, and incidents. Explain what each problem means in practice; in particular, if one miner holds a majority, say plainly that it could reverse recent payments and that confirmation counts do not protect against it. If the largest miner is flagged for withholding blocks, explain that it may be mining a chain in secret or simply be offline, and which payments to hold until it publishes again. ")
 		b.WriteString("Give numbers with units, note that the status page only covers nodes that report to it, and say when a figure is a short-window estimate that swings with luck.\n\n")
 		b.WriteString(untrustedRule)
 		return message(b.String()), nil

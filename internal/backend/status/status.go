@@ -149,11 +149,16 @@ type Stats struct {
 		LargestMiner *Miner `json:"largestMiner"`
 		Judged       bool   `json:"judged"`
 		Majority     bool   `json:"majority"`
-		Levels       []struct {
-			Confidence  float64  `json:"confidence"`
-			Blocks      *int     `json:"blocks"`
-			WaitSeconds *float64 `json:"waitSeconds"`
-		} `json:"levels"`
+		// Levels assume the largest miner may be mining in secret; OpenLevels
+		// hold for payments accepted while it is seen mining in the open.
+		Levels       []Level `json:"levels"`
+		OpenLevels   []Level `json:"openLevels"`
+		ReversalCost []struct {
+			Blocks int      `json:"blocks"`
+			LAX    float64  `json:"lax"`
+			USD    *float64 `json:"usd"`
+		} `json:"reversalCost"`
+		Watch *Watch `json:"watch"`
 	} `json:"confirmations"`
 	Supply json.RawMessage `json:"supply"`
 	Uptime struct {
@@ -224,6 +229,35 @@ type Stats struct {
 	} `json:"incidents"`
 }
 
+// Level is the fewest confirmations for a confidence, null when no number
+// is safe (a majority) or it takes more than 1,000.
+type Level struct {
+	Confidence  float64  `json:"confidence"`
+	Blocks      *int     `json:"blocks"`
+	WaitSeconds *float64 `json:"waitSeconds"`
+}
+
+// Watch is the hidden mining check on the largest miner, null while its
+// share is under 25%: its quietest recent stretch, from its block at
+// FromHeight to now, and how likely so few blocks would be from a miner
+// mining in the open.
+type Watch struct {
+	LastBlock struct {
+		Height    uint64 `json:"height"`
+		Timestamp int64  `json:"timestamp"`
+	} `json:"lastBlock"`
+	FromHeight uint64  `json:"fromHeight"`
+	Since      int64   `json:"since"`
+	Found      int     `json:"found"`
+	Expected   float64 `json:"expected"`
+	Chance     float64 `json:"chance"`
+	// Open: chance of 1 in 100 or better, so the shorter OpenLevels apply.
+	Open bool `json:"open"`
+	// Level is "warn" below 1 in 10,000 and "critical" (hold payments)
+	// below 1 in a million; null otherwise.
+	Level *string `json:"level"`
+}
+
 // Miner is a block producer; pools count as one.
 type Miner struct {
 	Name    *string `json:"name"`
@@ -260,7 +294,6 @@ type NodeRow struct {
 	Pending          int      `json:"pending"`
 	UptimePercent    *float64 `json:"uptimePercent"`
 	Country          *string  `json:"country"`
-	City             *string  `json:"city"`
 }
 
 // Alert is an alert showing on the page.
