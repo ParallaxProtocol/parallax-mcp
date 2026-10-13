@@ -294,11 +294,11 @@ func (c *Client) TokenTransfers(ctx context.Context, kind, addr, cursor string) 
 	if err != nil {
 		return Page[TokenTransfer]{}, err
 	}
-	base := "/api/v2/addresses/"
+	path := "/api/v2/addresses/" + url.PathEscape(addr) + "/token-transfers"
 	if kind == "token" {
-		base = "/api/v2/tokens/"
+		path = "/api/v2/tokens/" + url.PathEscape(addr) + "/transfers"
 	}
-	return getPage[TokenTransfer](ctx, c, base+url.PathEscape(addr)+"/token-transfers", q)
+	return getPage[TokenTransfer](ctx, c, path, q)
 }
 
 // InternalTxs returns a page of internal transactions of a transaction
