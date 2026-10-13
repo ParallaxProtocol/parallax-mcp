@@ -10,6 +10,11 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     -o /out/parallax-mcp ./cmd/parallax-mcp
 
 FROM gcr.io/distroless/static-debian12:nonroot
+# Proves to the MCP Registry that this image belongs to the server published
+# under this name (see server.json).
+LABEL io.modelcontextprotocol.server.name="io.github.ParallaxProtocol/parallax-mcp" \
+      org.opencontainers.image.source="https://github.com/ParallaxProtocol/parallax-mcp" \
+      org.opencontainers.image.licenses="GPL-3.0-only"
 COPY --from=build /out/parallax-mcp /usr/local/bin/parallax-mcp
 USER nonroot:nonroot
 EXPOSE 8080

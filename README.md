@@ -11,6 +11,10 @@ documentation and PIPs.
 It runs locally over stdio (Claude Desktop, Claude Code) or as a remote
 Streamable HTTP service, and never holds or accepts private keys.
 
+A public instance runs at `https://mcp.parallaxprotocol.org/mcp`, and the
+server is listed in the [MCP Registry](https://registry.modelcontextprotocol.io)
+as `io.github.ParallaxProtocol/parallax-mcp`.
+
 - [Tools](#tools)
 - [Resources and prompts](#resources-and-prompts)
 - [Using it](#using-it)
@@ -139,10 +143,10 @@ claude mcp add parallax -- /path/to/parallax-mcp
 claude mcp add parallax -- /path/to/parallax-mcp --groups chain,mining,explorer,network,mempool,tx --rpc-url http://127.0.0.1:8545
 ```
 
-Remote, over HTTP:
+Remote, over HTTP, using the public instance:
 
 ```sh
-claude mcp add --transport http parallax https://mcp.example.org/mcp
+claude mcp add --transport http parallax https://mcp.parallaxprotocol.org/mcp
 ```
 
 ### Claude Desktop

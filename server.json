@@ -1,0 +1,49 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ParallaxProtocol/parallax-mcp",
+  "title": "Parallax Protocol",
+  "description": "Read-only Parallax PoW chain data: blocks, transactions, mining, supply, explorer and network health",
+  "version": "0.1.2",
+  "websiteUrl": "https://parallaxprotocol.org",
+  "repository": {
+    "url": "https://github.com/ParallaxProtocol/parallax-mcp",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.parallaxprotocol.org/mcp"
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/parallaxprotocol/parallax-mcp:0.1.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--transport",
+          "value": "stdio",
+          "description": "Serve MCP over stdio (the image defaults to HTTP)"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "PARALLAX_MCP_RPC_URL",
+          "description": "Parallax JSON-RPC endpoint; a node serving debug, txpool and admin enables more tools",
+          "isRequired": false,
+          "default": "https://rpc.parallaxprotocol.org"
+        },
+        {
+          "name": "PARALLAX_MCP_GROUPS",
+          "description": "Tool groups: chain, mining, explorer, network, mempool, and tx (unsigned transaction tools, off by default)",
+          "isRequired": false,
+          "default": "chain,mining,explorer,network,mempool"
+        }
+      ]
+    }
+  ]
+}
