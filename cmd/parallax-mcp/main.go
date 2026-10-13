@@ -30,6 +30,13 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(healthcheck(os.Args[2:]))
+	}
+	if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "-version" || os.Args[1] == "--version") {
+		fmt.Println("parallax-mcp", server.Version)
+		return
+	}
 	if err := run(); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			os.Exit(0)
@@ -132,6 +139,27 @@ func serveMetrics(ctx context.Context, addr string, log *slog.Logger) {
 	if err := hs.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error("metrics server", "err", err)
 	}
+}
+
+// healthcheck is for container health checks, which cannot run curl in a
+// distroless image: it exits 0 when GET <url> answers 200.
+func healthcheck(args []string) int {
+	url := "http://127.0.0.1:8080/healthz"
+	if len(args) > 0 {
+		url = args[0]
+	}
+	c := &http.Client{Timeout: 3 * time.Second}
+	resp, err := c.Get(url)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintln(os.Stderr, "status", resp.StatusCode)
+		return 1
+	}
+	return 0
 }
 
 func newLogger(cfg config.Config) *slog.Logger {
