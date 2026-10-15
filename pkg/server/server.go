@@ -55,10 +55,17 @@ type Spec struct {
 	// such as "debug". The tool is left out when the node is known not to
 	// serve it.
 	Requires string
-	// Writes marks a tool that changes state outside the server. Only
+	// Writes marks a tool that changes the network's state. Only
 	// broadcast_signed_tx does; it is never registered unless broadcasting
 	// was explicitly allowed.
 	Writes bool
+	// Changes marks a tool that changes the state of the program serving
+	// it rather than the network, such as an app embedding the server
+	// starting its node. It is annotated as neither read-only nor reaching
+	// the open world, and needs no --allow-broadcast: the program decides.
+	Changes bool
+	// Destructive marks a Changes tool whose effect is hard to undo.
+	Destructive bool
 	// ExplorerOnly marks tools that only read the explorer, so they need no
 	// node.
 	ExplorerOnly bool
@@ -215,8 +222,9 @@ func Add[In any](r *Registrar, spec Spec, h func(ctx context.Context, in In) (an
 	}
 	r.tools = append(r.tools, spec)
 
-	readOnly := !spec.Writes
-	openWorld := true
+	readOnly := !spec.Writes && !spec.Changes
+	destructive := spec.Writes || spec.Destructive
+	openWorld := !spec.Changes
 	tool := &mcp.Tool{
 		Name:        spec.Name,
 		Title:       spec.Title,
@@ -224,7 +232,7 @@ func Add[In any](r *Registrar, spec Spec, h func(ctx context.Context, in In) (an
 		Annotations: &mcp.ToolAnnotations{
 			Title:           spec.Title,
 			ReadOnlyHint:    readOnly,
-			DestructiveHint: &spec.Writes,
+			DestructiveHint: &destructive,
 			IdempotentHint:  readOnly,
 			OpenWorldHint:   &openWorld,
 		},

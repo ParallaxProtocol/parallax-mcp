@@ -11,6 +11,7 @@ import (
 
 	"github.com/ParallaxProtocol/parallax-mcp/internal/testutil"
 	"github.com/ParallaxProtocol/parallax-mcp/pkg/config"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/server"
 	"github.com/ParallaxProtocol/parallax-mcp/pkg/tools"
 )
 
@@ -70,6 +71,37 @@ func TestEveryToolIsDescribedAndStrict(t *testing.T) {
 		if tool.Name == "broadcast_signed_tx" && (tool.Annotations.ReadOnlyHint || !*tool.Annotations.DestructiveHint) {
 			t.Fatal("broadcast_signed_tx must be annotated destructive")
 		}
+	}
+}
+
+// A program embedding the server registers tools of its own that change
+// its state: they need no --allow-broadcast and are annotated as changes.
+func TestEmbedderToolsThatChangeState(t *testing.T) {
+	register := func(r *server.Registrar) {
+		server.Add(r, server.Spec{Group: "app", Name: "start_node", Title: "Start node", Changes: true,
+			Description: "Starts the node of the app serving these tools, which it runs in process; it does nothing when the node already runs."},
+			func(context.Context, struct{}) (any, error) { return map[string]any{"started": true}, nil })
+		server.Add(r, server.Spec{Group: "app", Name: "remove_account", Title: "Remove account", Changes: true, Destructive: true,
+			Description: "Removes an account from the wallet of the app serving these tools; the account is gone unless it was backed up first."},
+			func(context.Context, struct{}) (any, error) { return map[string]any{}, nil })
+	}
+	e := testutil.NewEnv(t, []func(*server.Registrar){register}, nil, func(c *config.Config) { c.Groups = []string{"app"} })
+	byName := map[string]*mcp.Tool{}
+	for _, tool := range listTools(t, e) {
+		byName[tool.Name] = tool
+	}
+	start, remove := byName["start_node"], byName["remove_account"]
+	if start == nil || remove == nil {
+		t.Fatalf("registered: %v", byName)
+	}
+	if a := start.Annotations; a.ReadOnlyHint || *a.DestructiveHint || *a.OpenWorldHint {
+		t.Errorf("start_node annotations: %+v", a)
+	}
+	if a := remove.Annotations; a.ReadOnlyHint || !*a.DestructiveHint {
+		t.Errorf("remove_account annotations: %+v", a)
+	}
+	if out := e.MustCall(t, "start_node", nil); out["started"] != true {
+		t.Fatalf("got %v", out)
 	}
 }
 
