@@ -365,7 +365,7 @@ internal/testutil     fake node, explorer and status page for tests
 ```
 
 The packages under `pkg/` can be imported by other Go programs, such as
-Parallax Client, which serves these tools from its own node with
+Parallax Wallet, which serves these tools from its own node with
 `server.New` and its own tool groups alongside them.
 
 The node backend uses Parallax's own `rpc` package and types rather than

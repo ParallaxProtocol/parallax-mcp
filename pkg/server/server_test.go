@@ -39,7 +39,7 @@ func TestInstructions(t *testing.T) {
 	if got := instructions(t, deps); got != server.Instructions || !strings.HasPrefix(got, "Read-only access to the Parallax network (chain ID 2110): a proof-of-work") {
 		t.Fatalf("default instructions: %q", got)
 	}
-	deps.Instructions = "Parallax Client's node and wallet: " + server.Chain + "\n\n" + server.Conventions
+	deps.Instructions = "Parallax Wallet's node and wallet: " + server.Chain + "\n\n" + server.Conventions
 	if got := instructions(t, deps); got != deps.Instructions {
 		t.Fatalf("own instructions: %q", got)
 	}
