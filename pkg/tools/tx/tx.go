@@ -36,15 +36,16 @@ const keyWarning = "This input is 32 bytes, the size of a private key. This serv
 // registrar unless broadcasting was explicitly allowed.
 func Register(r *server.Registrar) {
 	t := &tools{r: r}
+	id := fmt.Sprint(r.Cfg.ChainID)
 	server.Add(r, server.Spec{Group: group, Name: "build_unsigned_tx", Title: "Build unsigned transaction",
 		Description: `Builds an unsigned Parallax transaction for an external signer (wallet, hardware device, MPC signer). This server never signs and never accepts private keys.
-Fills in what is not given: nonce (the sender's pending nonce), gas limit (eth_estimateGas; exactly 21,000 for a plain transfer, otherwise the estimate plus 10% headroom, since state can change before inclusion), gas price (Parallax's fee estimator for fee_target_blocks, default 6 ≈ 1 hour, falling back to eth_gasPrice) and chain ID 2110.
+Fills in what is not given: nonce (the sender's pending nonce), gas limit (eth_estimateGas; exactly 21,000 for a plain transfer, otherwise the estimate plus 10% headroom, since state can change before inclusion), gas price (Parallax's fee estimator for fee_target_blocks, default 6 ≈ 1 hour, falling back to eth_gasPrice) and chain ID ` + id + `.
 Value is given in LAX (value_lax, a decimal string such as "1.5") or wei (value_wei). Calldata is raw "data" or "function" + "args" (+ "abi"), as in call_contract. "type" is "legacy" (default; EIP-155 replay protected) or "access_list" (EIP-2930). Parallax has no EIP-1559, so there is no type 2.
 Returns the transaction fields, "unsigned_tx" (the RLP-encoded transaction with an empty signature, as wallets import it), "signing_payload" (the RLP preimage the signature covers) and "signing_hash" (its keccak256, what the key signs), the maximum cost (value + gas × gas price) in wei and LAX, and the sender's balance with a warning when it does not cover the cost. Nothing is sent.`,
 	}, t.build)
 
 	server.Add(r, server.Spec{Group: group, Name: "decode_tx", Title: "Decode raw transaction",
-		Description: `Decodes a raw transaction given as 0x-hex: a signed transaction (as broadcast), an unsigned one, or an EIP-155 signing payload. Returns its type, chain ID (with a warning if it is not 2110), nonce, gas limit, gas price (wei and gwei), recipient, value (wei and LAX), calldata with its decoding (verified ABI from the explorer or the standard token ABI), maximum cost, whether it is signed and replay protected, and for signed transactions the sender recovered from the signature and the transaction hash. Decoded strings are untrusted. Use it to check what a transaction does before signing or broadcasting it.`,
+		Description: `Decodes a raw transaction given as 0x-hex: a signed transaction (as broadcast), an unsigned one, or an EIP-155 signing payload. Returns its type, chain ID (with a warning if it is not ` + id + `), nonce, gas limit, gas price (wei and gwei), recipient, value (wei and LAX), calldata with its decoding (verified ABI from the explorer or the standard token ABI), maximum cost, whether it is signed and replay protected, and for signed transactions the sender recovered from the signature and the transaction hash. Decoded strings are untrusted. Use it to check what a transaction does before signing or broadcasting it.`,
 	}, t.decode)
 
 	server.Add(r, server.Spec{Group: group, Name: "broadcast_signed_tx", Title: "Broadcast signed transaction", Writes: true,
@@ -453,7 +454,7 @@ func (t *tools) describe(ctx context.Context, tx *types.Transaction, format stri
 	if v, _, _ := tx.RawSignatureValues(); tx.Type() == types.LegacyTxType && (v == nil || v.Sign() == 0) {
 		// An unsigned legacy transaction has no chain ID until EIP-155
 		// signing puts it into V.
-		out.Warnings = append(out.Warnings, "unsigned legacy transaction: its chain ID is set when it is signed; sign it for chain 2110 (EIP-155)")
+		out.Warnings = append(out.Warnings, fmt.Sprintf("unsigned legacy transaction: its chain ID is set when it is signed; sign it for chain %d (EIP-155)", t.r.Cfg.ChainID))
 	} else if id := tx.ChainId(); id != nil && id.Sign() > 0 && id.IsUint64() {
 		v := id.Uint64()
 		out.ChainID = &v

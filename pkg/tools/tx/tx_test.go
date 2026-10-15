@@ -1,6 +1,7 @@
 package tx_test
 
 import (
+	"context"
 	"encoding/json"
 	"math/big"
 	"slices"
@@ -167,6 +168,19 @@ func TestDecodeUnsignedLegacy(t *testing.T) {
 	dec := e.MustCall(t, "decode_tx", map[string]any{"raw": out["unsigned_tx"]})
 	if dec["chain_id"] != nil || dec["signed"] != false || !strings.Contains(strings.Join(toStrings(dec["warnings"]), " "), "chain ID is set when it is signed") {
 		t.Fatalf("got %v", dec)
+	}
+}
+
+func TestDescriptionsNameConfiguredChain(t *testing.T) {
+	e := newEnv(t, false, func(c *config.Config) { c.ChainID = 1337 })
+	res, err := e.Client.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range res.Tools {
+		if strings.Contains(tool.Description, "2110") || !strings.Contains(tool.Description, "1337") {
+			t.Errorf("%s: description does not name chain 1337: %q", tool.Name, tool.Description)
+		}
 	}
 }
 
