@@ -13,7 +13,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/ParallaxProtocol/parallax-mcp/internal/config"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/config"
 )
 
 func TestClientIPBehindCloudflare(t *testing.T) {

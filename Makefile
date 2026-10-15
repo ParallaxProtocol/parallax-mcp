@@ -1,6 +1,6 @@
 # parallax-mcp build targets.
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -s -w -X github.com/ParallaxProtocol/parallax-mcp/internal/server.Version=$(VERSION)
+LDFLAGS := -s -w -X github.com/ParallaxProtocol/parallax-mcp/pkg/server.Version=$(VERSION)
 IMAGE   ?= ghcr.io/parallaxprotocol/parallax-mcp
 
 .PHONY: all build tools test race live live-full lint fmt docker run-stdio run-http sync-content clean

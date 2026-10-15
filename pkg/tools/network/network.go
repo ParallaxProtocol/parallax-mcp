@@ -1,0 +1,710 @@
+// Package network is the network tool group: health, nodes, incidents and
+// block propagation from the status page, combined with what the configured
+// node sees of the network.
+package network
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"math"
+	"math/big"
+	"sort"
+	"sync"
+	"time"
+
+	"github.com/ParallaxProtocol/parallax/v2/util/hexutil"
+
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/backend/status"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/config"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/evm"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/server"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/untrusted"
+)
+
+const group = config.GroupNetwork
+
+const coverageNote = ` The status page covers the nodes that report to it (run with --prlstats), not every node on the network; unverified nodes' rows are self-reported.`
+
+// Register adds the network tools.
+func Register(r *server.Registrar) {
+	t := &tools{r: r}
+	server.Add(r, server.Spec{Group: group, Name: "network_health", Title: "Network health",
+		Description: `One-call health report of the Parallax network, combining the status page (status.parallaxprotocol.org) with the configured node.
+From the status page: the best block and seconds since it was found, reporting nodes (total, active, synced), active alerts with level (critical, warn, info) and details (types: split = verified nodes on different chains; reorg = a reorganization 3+ blocks deep; majority = one miner found most of the last 7 days' blocks; withholding = the largest miner is publishing far fewer blocks than its share predicts, so it may be mining a chain in secret, or simply be offline; propagation / slow-miner = blocks slow to reach nodes; release = nodes behind the latest client release), ongoing incidents, mining decentralization (grade healthy/fair/concentrated/critical, the fewest miners holding a majority, top miner), and the recommended confirmations to wait against the largest miner:
+- "status": hold_payments (the largest miner has stopped publishing blocks as its share predicts: payments in blocks after "hold_payments_after_height" may be reversed, so hold them until it publishes again and no reorganization reaches that height), no_safe_count (a majority miner: what protects a payment is "reversal_cost", what the miner loses to reverse one with 6, 12 or 24 confirmations; wait until that exceeds the payment), mining_in_the_open, may_be_mining_in_secret, or too_early (too few blocks to judge).
+- "levels": blocks and wait for 99/99.9/99.99% confidence that apply now (shorter while the miner is seen mining in the open; null when no number is safe), and "hidden_mining_watch": the largest miner's quietest recent stretch, blocks found against expected and the chance of that if mining openly.
+Also: mempool pressure (pending transactions as a share of a block), stale blocks and reorgs, propagation medians, client versions and verified nodes' uptime.
+From the node: its head, seconds since that block, sync status and peer count, and how far it is from the status page's best block; with the admin namespace also its uptime and address book.
+"issues" lists what needs attention in one place. If either source is unreachable the other's data is still returned with the failure in "errors".` + coverageNote,
+	}, t.health)
+
+	server.Add(r, server.Spec{Group: group, Name: "network_nodes", Title: "Reporting nodes",
+		Description: `The nodes reporting to the status page: name (operator-chosen for verified nodes, a pseudonym such as node-3f9a2c1b otherwise; untrusted), verified, client version, online/offline (and since when), syncing, mining and hashrate, peers, peer latency (ms), best block, propagation delay of the last block (left out when it was not timed: a block the node caught up to after connecting or while syncing) and on average (ms), pending transactions, uptime (%) and country (IP addresses and cities are never published). Offline nodes are left out unless include_offline=true; verified_only=true keeps only operator-verified nodes.` + coverageNote,
+	}, t.nodes)
+
+	server.Add(r, server.Spec{Group: group, Name: "network_incidents", Title: "Incidents and uptime",
+		Description: `The status page's incident record: periods when an alert condition held (majority; withholding = the largest miner publishing far fewer blocks than its share predicts; spread = slow propagation; split; reorg), each with level, start and end (UTC; "ongoing" when it has not ended), duration in seconds and a description (untrusted). Covers the last "days" days (default 30, at most 90), newest first, plus verified nodes' average uptime and when recording began.`,
+	}, t.incidents)
+
+	server.Add(r, server.Spec{Group: group, Name: "network_propagation", Title: "Propagation and chain stability",
+		Description: `How fast blocks spread and how stable the chain tip is, from the status page: propagation reports with median, p90 and p99 delay (ms) after the first node saw a block, the median time for recent blocks to reach 90% of verified nodes and any consistently slow miner, delays by band; stale blocks in the last 2,000 heights, reorganization count and the last and last deep (3+ blocks) reorg with height, depth and time, and any chain split.`,
+	}, t.propagation)
+
+	server.Add(r, server.Spec{Group: group, Name: "network_trends", Title: "Network trends (7 days)",
+		Description: `The status page's figures over the last 7 days in 4-hour slices (UTC, oldest first; null where nothing was measured): block_time_seconds and hashes_per_second (each pooled over the 24 hours to the slice's end, so luck in one slice does not swing them), difficulty (mean of the slice's blocks), hashprice_lax (LAX a hash per second earns per day) and security_budget_lax (LAX miners earn per day) at today's block pay, active_nodes, synced_nodes, recommended_fee_wei, latency_ms (median peer latency), uptime_percent, pending (mempool) and mempool_pressure (pending transactions as a share of a block). "metrics" selects some of these; all by default. For longer histories of transactions, fees and gas, use explorer_charts.`,
+	}, t.trends)
+
+	server.Add(r, server.Spec{Group: group, Name: "node_peers", Title: "Node peers", Requires: "admin",
+		Description: `The configured node's own view of the peer-to-peer network (needs a node serving the admin namespace): its uptime, peer count, and each peer's client (untrusted), direction (inbound/outbound), trusted/static flags, protocols, its head block hash, and minimum ping in ms; plus the address book (addrman) size by source and the number of banned addresses. Peer IP addresses and node IDs are omitted unless the server runs on stdio with --expose-peer-addresses.`,
+	}, t.peers)
+}
+
+type tools struct{ r *server.Registrar }
+
+func (t *tools) snapshot(ctx context.Context) (status.Snapshot, error) {
+	if t.r.Status == nil {
+		return status.Snapshot{}, fmt.Errorf("no status page is configured (--status-url)")
+	}
+	return t.r.Status.Stats(ctx)
+}
+
+// ---- network_health ----
+
+type noIn struct{}
+
+type nodeView struct {
+	Head            uint64  `json:"head_block"`
+	SecondsSince    int64   `json:"seconds_since_head_block"`
+	Syncing         bool    `json:"syncing"`
+	Peers           uint64  `json:"peers"`
+	BehindBestBlock *int64  `json:"blocks_behind_status_best,omitempty"`
+	UptimeSeconds   *uint64 `json:"uptime_seconds,omitempty"`
+	AddrBook        any     `json:"address_book,omitempty"`
+}
+
+type healthOut struct {
+	server.Partial
+	Issues     []string       `json:"issues"`
+	StatusPage map[string]any `json:"status_page,omitempty"`
+	Node       *nodeView      `json:"node,omitempty"`
+}
+
+func (t *tools) health(ctx context.Context, _ noIn) (any, error) {
+	var (
+		snap    status.Snapshot
+		snapErr error
+		nv      *nodeView
+		nodeErr error
+		wg      sync.WaitGroup
+	)
+	wg.Add(2)
+	go func() { defer wg.Done(); snap, snapErr = t.snapshot(ctx) }()
+	go func() { defer wg.Done(); nv, nodeErr = t.nodeView(ctx) }()
+	wg.Wait()
+
+	out := healthOut{Issues: []string{}}
+	now := t.r.Now()
+	if nodeErr != nil {
+		out.Fail("node", nodeErr)
+		out.Issues = append(out.Issues, "the configured node is unreachable: "+server.ErrorText(nodeErr))
+	} else {
+		out.Node = nv
+		if nv.Syncing {
+			out.Issues = append(out.Issues, "the configured node is still syncing")
+		}
+		if nv.Peers == 0 {
+			out.Issues = append(out.Issues, "the configured node has no peers")
+		}
+	}
+	if snapErr != nil {
+		out.Fail("status_page", snapErr)
+		out.Issues = append(out.Issues, "the status page is unreachable; network-wide figures are missing")
+	} else {
+		if snap.Stale {
+			out.Fail("status_page", fmt.Errorf("serving a copy from %s: %v", snap.FetchedAt.UTC().Format(time.RFC3339), snap.Error))
+		}
+		s := snap.Stats
+		out.StatusPage = summarizeStatus(s, now)
+		if out.Node != nil && s.BestBlock != nil {
+			behind := int64(s.BestBlock.Number) - int64(out.Node.Head)
+			out.Node.BehindBestBlock = &behind
+			if behind > 2 {
+				out.Issues = append(out.Issues, fmt.Sprintf("the configured node is %d blocks behind the status page's best block", behind))
+			}
+		}
+		for _, a := range s.Alerts {
+			out.Issues = append(out.Issues, alertText(a))
+		}
+		if s.Nodes.Active > 0 && s.Nodes.Synced < s.Nodes.Active {
+			out.Issues = append(out.Issues, fmt.Sprintf("%d of %d active reporting nodes are not synced", s.Nodes.Active-s.Nodes.Synced, s.Nodes.Active))
+		}
+	}
+	// The status page has no alert for a long wait, so the head's age is
+	// checked here: the node's, or the status page's best block without one
+	since := int64(-1)
+	if out.Node != nil {
+		since = out.Node.SecondsSince
+	} else if snapErr == nil && snap.BestBlock != nil {
+		since = now.Unix() - snap.BestBlock.Timestamp/1000
+	}
+	if since > 2*3600 {
+		out.Issues = append(out.Issues, fmt.Sprintf("no block for %d minutes (a 2 hour gap is a 1 in 160,000 event at steady hashrate)", since/60))
+	}
+	return out, nil
+}
+
+func (t *tools) nodeView(ctx context.Context) (*nodeView, error) {
+	var (
+		head    evm.RPCHeader
+		syncing json.RawMessage
+		peers   hexutil.Big
+	)
+	batch := []server.BatchElem{
+		{Method: "eth_getHeaderByNumber", Args: []any{"latest"}, Result: &head},
+		{Method: "eth_syncing", Result: &syncing},
+		{Method: "net_peerCount", Result: &peers},
+	}
+	if err := t.r.Node.Batch(ctx, batch); err != nil {
+		return nil, err
+	}
+	for _, b := range batch {
+		if b.Error != nil {
+			return nil, b.Error
+		}
+	}
+	v := &nodeView{
+		Head:         uint64(head.Number),
+		SecondsSince: t.r.Now().Unix() - int64(head.Timestamp),
+		Syncing:      !bytes.Equal(bytes.TrimSpace(syncing), []byte("false")),
+		Peers:        (*big.Int)(&peers).Uint64(),
+	}
+	if t.r.HasModule("admin") {
+		var up uint64
+		var book json.RawMessage
+		ab := []server.BatchElem{
+			{Method: "admin_uptime", Result: &up},
+			{Method: "admin_addrbookStatus", Result: &book},
+		}
+		if err := t.r.Node.Batch(ctx, ab); err == nil {
+			if ab[0].Error == nil {
+				v.UptimeSeconds = &up
+			}
+			if ab[1].Error == nil {
+				v.AddrBook = book
+			}
+		}
+	}
+	return v, nil
+}
+
+func summarizeStatus(s *status.Stats, now time.Time) map[string]any {
+	out := map[string]any{"nodes": map[string]any{"total": s.Nodes.Total, "active": s.Nodes.Active, "synced": s.Nodes.Synced, "median_peer_latency_ms": s.Nodes.LatencyMs}}
+	if s.Network != nil {
+		out["network"] = *s.Network
+	}
+	if b := s.BestBlock; b != nil {
+		bb := map[string]any{"number": b.Number, "hash": b.Hash, "miner": b.Miner, "timestamp": b.Timestamp / 1000, "seconds_since_found": now.Unix() - b.Timestamp/1000}
+		if b.Pool != nil {
+			bb["pool"] = untrusted.New(*b.Pool)
+		}
+		out["best_block"] = bb
+	}
+	if w := s.BlockTime.Week; w != nil {
+		out["block_time_7d_mean_seconds"] = round(w.AverageSeconds, 1)
+	}
+	if s.Hashrate.HashesPerSecond != nil {
+		out["hashrate_hashes_per_second"] = math.Round(*s.Hashrate.HashesPerSecond)
+	}
+	alerts := make([]map[string]any, 0, len(s.Alerts))
+	for _, a := range s.Alerts {
+		m := map[string]any{"type": a.Type, "level": a.Level, "details": wrapJSON(a.Details)}
+		if a.Since != nil {
+			m["since"] = *a.Since / 1000
+		}
+		alerts = append(alerts, m)
+	}
+	out["alerts"] = alerts
+	if inc := s.Incidents; inc != nil {
+		var ongoing []map[string]any
+		for _, i := range inc.List {
+			if i.End == nil {
+				ongoing = append(ongoing, incident(i, now))
+			}
+		}
+		out["ongoing_incidents"] = ongoing
+	}
+	if d := s.Decentralization; d != nil {
+		dec := map[string]any{"grade": d.Grade, "majority_holders": d.MajorityHolders, "distinct_miners": d.DistinctMiners, "blocks": d.Blocks}
+		if len(d.TopMiners) > 0 {
+			dec["top_miner"] = miner(d.TopMiners[0])
+		}
+		out["decentralization_7d"] = dec
+	}
+	if s.Confirmations != nil {
+		out["recommended_confirmations"] = confirmations(s, now)
+	}
+	if m := s.Mempool; m != nil {
+		out["mempool"] = map[string]any{"pending_median": m.Pending, "pressure_blocks": m.Pressure, "blocks_to_clear": m.BlocksToClear}
+	}
+	if sb := s.StaleBlocks; sb != nil {
+		out["stale_blocks"] = map[string]any{"window": sb.Window, "count": sb.Count, "reorgs": sb.Reorgs.Count, "last_deep_reorg": reorg(sb.LastDeepReorg), "split": wrapJSON(sb.Split)}
+	}
+	if p := s.Propagation; p != nil {
+		prop := map[string]any{"median_ms": p.MedianMs, "p90_ms": p.P90Ms}
+		if p.Reach90 != nil {
+			prop["reach_90_percent_median_ms"] = p.Reach90.Median
+		}
+		out["propagation"] = prop
+	}
+	if cv := s.ClientVersions; cv != nil {
+		v := map[string]any{"online": cv.Online, "up_to_date": cv.UpToDate, "behind": cv.Behind}
+		if cv.Latest != nil {
+			v["latest_release"] = cv.Latest.Version
+		}
+		out["client_versions"] = v
+	}
+	if s.Uptime.VerifiedAveragePercent != nil {
+		out["verified_uptime_percent"] = *s.Uptime.VerifiedAveragePercent
+	}
+	if len(s.SecurityBudget) > 0 {
+		out["security_budget"] = json.RawMessage(s.SecurityBudget)
+	}
+	return out
+}
+
+// confirmations is the status page's Recommended confirmations tile: which
+// waits apply now, by the same rules the tile uses, and the hidden mining
+// watch they depend on.
+func confirmations(s *status.Stats, now time.Time) map[string]any {
+	c := s.Confirmations
+	conf := map[string]any{"judged": c.Judged, "majority_miner_exists": c.Majority}
+	if c.LargestMiner != nil {
+		conf["largest_miner"] = miner(*c.LargestMiner)
+	}
+	w := c.Watch
+	if w != nil {
+		watch := map[string]any{
+			"last_block_height":       w.LastBlock.Height,
+			"seconds_since_its_block": now.Unix() - w.LastBlock.Timestamp/1000,
+			"from_height":             w.FromHeight,
+			"blocks_found":            w.Found,
+			"blocks_expected":         round(w.Expected, 1),
+			"chance_if_mining_openly": w.Chance,
+			"mining_in_the_open":      w.Open,
+		}
+		if w.Level != nil {
+			watch["level"] = *w.Level
+		}
+		conf["hidden_mining_watch"] = watch
+	}
+
+	// The tile's shorter waits hold only while the miner is seen mining in the open
+	open := w != nil && w.Open
+	levels := c.Levels
+	if open {
+		levels = c.OpenLevels
+	}
+	var lv []map[string]any
+	for _, l := range levels {
+		lv = append(lv, map[string]any{"confidence": l.Confidence, "blocks": l.Blocks, "wait_seconds": l.WaitSeconds})
+	}
+	conf["levels"] = lv
+
+	switch {
+	case !c.Judged:
+		conf["status"] = "too_early"
+		conf["note"] = "too few blocks in the last 7 days to judge the largest miner's share"
+	case w != nil && w.Level != nil && *w.Level == "critical":
+		conf["status"] = "hold_payments"
+		conf["hold_payments_after_height"] = w.FromHeight
+		conf["note"] = fmt.Sprintf("the largest miner has published far fewer blocks since #%d than its share predicts, so it may be mining a chain in secret that would replace them; payments in blocks after #%d may be reversed. Hold them until it publishes again, then check that no reorganization reached that height. A miner that is merely offline looks the same", w.FromHeight, w.FromHeight)
+	case c.Majority:
+		conf["status"] = "no_safe_count"
+		conf["note"] = "one miner holds a majority of recent blocks, so no number of confirmations makes a payment safe against it; what protects a payment is what reversing it would cost that miner (reversal_cost): wait until that exceeds the payment"
+	case open:
+		conf["status"] = "mining_in_the_open"
+	default:
+		conf["status"] = "may_be_mining_in_secret"
+		if w != nil && w.Level != nil {
+			conf["note"] = fmt.Sprintf("the largest miner has published fewer blocks since #%d than its share predicts and may be mining in secret, or be offline; the longer waits apply", w.FromHeight)
+		}
+	}
+	if c.Majority {
+		var cost []map[string]any
+		for _, r := range c.ReversalCost {
+			m := map[string]any{"confirmations": r.Blocks, "lax": round(r.LAX, 2)}
+			if r.USD != nil {
+				m["usd"] = round(*r.USD, 2)
+			}
+			cost = append(cost, m)
+		}
+		conf["reversal_cost"] = cost
+	}
+	return conf
+}
+
+func alertText(a status.Alert) string {
+	var d map[string]any
+	_ = json.Unmarshal(a.Details, &d)
+	num := func(k string) float64 { f, _ := d[k].(float64); return f }
+	switch a.Type {
+	case "majority":
+		return fmt.Sprintf("%s: one miner found %.0f%% of the last 7 days' blocks (%.0f of %.0f) and could rewrite recent history", a.Level, num("share")*100, num("blocks"), num("of"))
+	case "withholding":
+		text := fmt.Sprintf("%s: the largest miner published %.0f blocks after #%.0f against %.0f expected, so it may be mining in secret or be offline", a.Level, num("found"), num("fromHeight"), num("expected"))
+		if a.Level == "critical" {
+			text += fmt.Sprintf("; hold payments in blocks after #%.0f, which it could reverse", num("fromHeight"))
+		}
+		return text
+	case "split":
+		return fmt.Sprintf("%s: verified nodes are on different chains", a.Level)
+	case "reorg":
+		return fmt.Sprintf("%s: a %.0f block deep reorganization at height %.0f", a.Level, num("depth"), num("height"))
+	case "propagation":
+		return fmt.Sprintf("%s: blocks take a median %.0f ms to reach 90%% of verified nodes", a.Level, num("medianMs"))
+	case "slow-miner":
+		return fmt.Sprintf("%s: one miner's blocks propagate slowly (median %.0f ms)", a.Level, num("medianMs"))
+	case "release":
+		return fmt.Sprintf("%s: %.0f of %.0f online nodes run a client older than the latest release", a.Level, num("behind"), num("online"))
+	}
+	return a.Level + ": " + untrusted.Sanitize(a.Type)
+}
+
+func miner(m status.Miner) map[string]any {
+	out := map[string]any{"address": m.Address, "share": round(m.Share, 4)}
+	if m.Blocks > 0 {
+		out["blocks"] = m.Blocks
+	}
+	if m.Name != nil {
+		out["name"] = untrusted.New(*m.Name)
+	}
+	return out
+}
+
+func reorg(r *status.Reorg) any {
+	if r == nil {
+		return nil
+	}
+	return map[string]any{"height": r.Height, "depth": r.Depth, "nodes": r.Nodes, "at": r.At / 1000}
+}
+
+func incident(i status.Incident, now time.Time) map[string]any {
+	m := map[string]any{"kind": i.Kind, "level": i.Level, "start": time.UnixMilli(i.Start).UTC().Format(time.RFC3339), "detail": wrapJSON(i.Detail)}
+	if !i.StartKnown {
+		m["start_is_lower_bound"] = true
+	}
+	end := now
+	if i.End != nil {
+		end = time.UnixMilli(*i.End)
+		m["end"] = end.UTC().Format(time.RFC3339)
+	} else {
+		m["end"] = "ongoing"
+	}
+	m["duration_seconds"] = int64(end.Sub(time.UnixMilli(i.Start)).Seconds())
+	return m
+}
+
+func wrapJSON(raw json.RawMessage) any { return untrusted.WrapJSON(raw) }
+
+// ---- network_nodes ----
+
+type nodesIn struct {
+	IncludeOffline bool `json:"include_offline,omitempty" jsonschema:"also list nodes that are offline"`
+	VerifiedOnly   bool `json:"verified_only,omitempty" jsonschema:"list only operator-verified nodes"`
+}
+
+func (t *tools) nodes(ctx context.Context, in nodesIn) (any, error) {
+	snap, err := t.snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	type row struct {
+		Name         untrusted.Text  `json:"name"`
+		Verified     bool            `json:"verified"`
+		Client       untrusted.Text  `json:"client"`
+		Online       bool            `json:"online"`
+		OfflineSince string          `json:"offline_since,omitempty"`
+		Syncing      bool            `json:"syncing"`
+		Mining       bool            `json:"mining"`
+		Hashrate     float64         `json:"hashes_per_second,omitempty"`
+		Peers        int             `json:"peers"`
+		LatencyMs    *float64        `json:"peer_latency_ms,omitempty"`
+		Block        uint64          `json:"block"`
+		PropMs       *float64        `json:"propagation_ms,omitempty"`
+		PropAvgMs    *float64        `json:"propagation_avg_ms,omitempty"`
+		Pending      int             `json:"pending_transactions"`
+		Uptime       *float64        `json:"uptime_percent,omitempty"`
+		Country      *untrusted.Text `json:"country,omitempty"`
+	}
+	var rows []row
+	offline := 0
+	for _, n := range snap.NodeList {
+		if !n.Active {
+			offline++
+		}
+		if (!n.Active && !in.IncludeOffline) || (in.VerifiedOnly && !n.Verified) {
+			continue
+		}
+		r := row{Name: untrusted.NewN(n.Name, 64), Verified: n.Verified, Client: untrusted.New(n.Client), Online: n.Active, Syncing: n.Syncing,
+			Mining: n.Mining, Hashrate: n.HashesPerSecond, Peers: n.Peers, LatencyMs: n.PeerLatencyMs, Block: n.Block,
+			PropMs: n.PropagationMs, PropAvgMs: n.PropagationAvgMs, Pending: n.Pending, Uptime: n.UptimePercent}
+		if n.OfflineSince != nil {
+			r.OfflineSince = time.UnixMilli(*n.OfflineSince).UTC().Format(time.RFC3339)
+		}
+		if n.Country != nil && *n.Country != "" {
+			c := untrusted.New(*n.Country)
+			r.Country = &c
+		}
+		rows = append(rows, r)
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].Verified != rows[j].Verified {
+			return rows[i].Verified
+		}
+		return rows[i].Block > rows[j].Block
+	})
+	out := map[string]any{"total": len(snap.NodeList), "offline": offline, "listed": len(rows), "nodes": rows}
+	if snap.Stale {
+		out["errors"] = map[string]string{"status_page": "serving an older copy: " + server.ErrorText(snap.Error)}
+	}
+	return out, nil
+}
+
+// ---- network_incidents ----
+
+type incidentsIn struct {
+	Days int `json:"days,omitempty" jsonschema:"how many days back (default 30, at most 90)"`
+}
+
+func (t *tools) incidents(ctx context.Context, in incidentsIn) (any, error) {
+	days := in.Days
+	if days == 0 {
+		days = 30
+	}
+	if days < 1 || days > 90 {
+		return nil, server.Inputf("days must be between 1 and 90")
+	}
+	snap, err := t.snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	now := t.r.Now()
+	cutoff := now.Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
+	out := map[string]any{"days": days}
+	var list []map[string]any
+	if inc := snap.Incidents; inc != nil {
+		out["recording_since"] = time.UnixMilli(inc.Since).UTC().Format(time.RFC3339)
+		for _, i := range inc.List {
+			if i.End != nil && *i.End < cutoff {
+				continue
+			}
+			list = append(list, incident(i, now))
+		}
+	}
+	out["incidents"] = list
+	out["count"] = len(list)
+	if snap.Uptime.VerifiedAveragePercent != nil {
+		out["verified_uptime_percent"] = *snap.Uptime.VerifiedAveragePercent
+	}
+	return out, nil
+}
+
+// ---- network_propagation ----
+
+func (t *tools) propagation(ctx context.Context, _ noIn) (any, error) {
+	snap, err := t.snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]any{}
+	if p := snap.Propagation; p != nil {
+		prop := map[string]any{"reports": p.Reports, "median_ms": p.MedianMs, "p90_ms": p.P90Ms, "p99_ms": p.P99Ms}
+		if p.Reach90 != nil {
+			prop["reach_90_percent"] = map[string]any{"median_ms": p.Reach90.Median, "blocks": p.Reach90.Blocks, "slow_miner": wrapJSON(p.Reach90.SlowMiner)}
+		}
+		var bands []map[string]any
+		for _, b := range p.Bands {
+			bands = append(bands, map[string]any{"from_ms": b.FromMs, "to_ms": b.ToMs, "reports": b.Reports})
+		}
+		prop["bands"] = bands
+		out["propagation"] = prop
+	}
+	if sb := snap.StaleBlocks; sb != nil {
+		out["stale_blocks"] = map[string]any{
+			"window_heights":  sb.Window,
+			"count":           sb.Count,
+			"recent_heights":  sb.Recent,
+			"reorgs":          sb.Reorgs.Count,
+			"reorgs_since":    time.UnixMilli(sb.Reorgs.Since).UTC().Format(time.RFC3339),
+			"last_reorg":      reorg(sb.LastReorg),
+			"last_deep_reorg": reorg(sb.LastDeepReorg),
+			"split":           wrapJSON(sb.Split),
+			"warning_level":   sb.Level,
+		}
+	}
+	return out, nil
+}
+
+// ---- network_trends ----
+
+var trendFields = map[string]string{
+	"block_time_seconds":  "blockTimeSeconds",
+	"hashes_per_second":   "hashesPerSecond",
+	"difficulty":          "difficulty",
+	"hashprice_lax":       "hashpriceLax",
+	"security_budget_lax": "securityBudgetLax",
+	"active_nodes":        "activeNodes",
+	"synced_nodes":        "syncedNodes",
+	"recommended_fee_wei": "recommendedFeeWei",
+	"latency_ms":          "latencyMs",
+	"uptime_percent":      "uptimePercent",
+	"pending":             "pending",
+	"mempool_pressure":    "mempoolPressure",
+}
+
+type trendsIn struct {
+	Metrics []string `json:"metrics,omitempty" jsonschema:"which series to return (default all): block_time_seconds, hashes_per_second, difficulty, hashprice_lax, security_budget_lax, active_nodes, synced_nodes, recommended_fee_wei, latency_ms, uptime_percent, pending, mempool_pressure"`
+}
+
+func (t *tools) trends(ctx context.Context, in trendsIn) (any, error) {
+	snap, err := t.snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var cols map[string][]json.RawMessage
+	if err := json.Unmarshal(snap.Trends, &cols); err != nil || len(cols["start"]) == 0 {
+		return nil, fmt.Errorf("the status page returned no trends")
+	}
+	metrics := in.Metrics
+	if len(metrics) == 0 {
+		for m := range trendFields {
+			metrics = append(metrics, m)
+		}
+		sort.Strings(metrics)
+	}
+	for _, m := range metrics {
+		if _, ok := trendFields[m]; !ok {
+			return nil, server.Inputf("unknown metric %q", m)
+		}
+	}
+	rows := make([]map[string]any, len(cols["start"]))
+	for i, raw := range cols["start"] {
+		var ms int64
+		_ = json.Unmarshal(raw, &ms)
+		row := map[string]any{"start": time.UnixMilli(ms).UTC().Format(time.RFC3339)}
+		for _, m := range metrics {
+			col := cols[trendFields[m]]
+			if i < len(col) {
+				var v any
+				_ = json.Unmarshal(col[i], &v)
+				row[m] = v
+			}
+		}
+		rows[i] = row
+	}
+	return map[string]any{"slice_hours": 4, "slices": len(rows), "metrics": metrics, "rows": rows}, nil
+}
+
+// ---- node_peers ----
+
+type peerInfo struct {
+	ID      string   `json:"id"`
+	Enode   string   `json:"enode"`
+	Name    string   `json:"name"`
+	Caps    []string `json:"caps"`
+	Network struct {
+		RemoteAddress string `json:"remoteAddress"`
+		Inbound       bool   `json:"inbound"`
+		Trusted       bool   `json:"trusted"`
+		Static        bool   `json:"static"`
+	} `json:"network"`
+	MinPing   *float64                   `json:"minPing"`
+	Protocols map[string]json.RawMessage `json:"protocols"`
+}
+
+func (t *tools) peers(ctx context.Context, _ noIn) (any, error) {
+	var (
+		peers  []peerInfo
+		uptime uint64
+		book   json.RawMessage
+		banned []json.RawMessage
+	)
+	batch := []server.BatchElem{
+		{Method: "admin_peers", Result: &peers},
+		{Method: "admin_uptime", Result: &uptime},
+		{Method: "admin_addrbookStatus", Result: &book},
+		{Method: "admin_listbanned", Result: &banned},
+	}
+	if err := t.r.Node.Batch(ctx, batch); err != nil {
+		return nil, err
+	}
+	if batch[0].Error != nil {
+		return nil, batch[0].Error
+	}
+	var p server.Partial
+	expose := t.r.Cfg.PeerAddressesExposed()
+	type peerOut struct {
+		Client    untrusted.Text `json:"client"`
+		Direction string         `json:"direction"`
+		Trusted   bool           `json:"trusted,omitempty"`
+		Static    bool           `json:"static,omitempty"`
+		Protocols []string       `json:"protocols"`
+		Head      string         `json:"head,omitempty"`
+		PingMs    *float64       `json:"min_ping_ms,omitempty"`
+		Address   string         `json:"address,omitempty"`
+		ID        string         `json:"node_id,omitempty"`
+	}
+	list := make([]peerOut, 0, len(peers))
+	inbound := 0
+	for _, pi := range peers {
+		o := peerOut{Client: untrusted.New(pi.Name), Direction: "outbound", Trusted: pi.Network.Trusted, Static: pi.Network.Static, Protocols: pi.Caps}
+		if pi.Network.Inbound {
+			o.Direction = "inbound"
+			inbound++
+		}
+		if pi.MinPing != nil {
+			ms := round(*pi.MinPing*1000, 1)
+			o.PingMs = &ms
+		}
+		var proto struct {
+			Head string `json:"head"`
+		}
+		if raw, ok := pi.Protocols["parallax"]; ok && json.Unmarshal(raw, &proto) == nil {
+			o.Head = proto.Head
+		}
+		if expose {
+			o.Address, o.ID = pi.Network.RemoteAddress, pi.ID
+		}
+		list = append(list, o)
+	}
+	out := map[string]any{"peer_count": len(peers), "inbound": inbound, "outbound": len(peers) - inbound, "peers": list}
+	if !expose {
+		out["addresses"] = "omitted: peer IP addresses are only shown on stdio with --expose-peer-addresses"
+	}
+	if batch[1].Error == nil {
+		out["node_uptime_seconds"] = uptime
+	} else {
+		p.Fail("admin_uptime", batch[1].Error)
+	}
+	if batch[2].Error == nil {
+		out["address_book"] = book
+	} else {
+		p.Fail("admin_addrbookStatus", batch[2].Error)
+	}
+	if batch[3].Error == nil {
+		out["banned_count"] = len(banned)
+	} else {
+		p.Fail("admin_listbanned", batch[3].Error)
+	}
+	if p.Errors != nil {
+		out["errors"] = p.Errors
+	}
+	return out, nil
+}
+
+func round(f float64, places int) float64 {
+	pw := math.Pow(10, float64(places))
+	return math.Round(f*pw) / pw
+}

@@ -59,7 +59,7 @@ jobs:
         run: |
           git -C .parallax checkout -q -B main
           scripts/sync-content.sh main
-          git status --short internal/resources/content | head -20
+          git status --short pkg/resources/content | head -20
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3

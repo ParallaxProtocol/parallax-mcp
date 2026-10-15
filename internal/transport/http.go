@@ -15,8 +15,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/time/rate"
 
-	"github.com/ParallaxProtocol/parallax-mcp/internal/config"
-	"github.com/ParallaxProtocol/parallax-mcp/internal/metrics"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/config"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/metrics"
 )
 
 // Stdio serves one client over standard input and output until it

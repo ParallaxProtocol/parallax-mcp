@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ParallaxProtocol/parallax-mcp/internal/config"
-	"github.com/ParallaxProtocol/parallax-mcp/internal/server"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/config"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/server"
 )
 
 // A slow tool's event stream must start with pings before the result, so

@@ -22,15 +22,15 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/ParallaxProtocol/parallax-mcp/internal/backend/blockscout"
-	"github.com/ParallaxProtocol/parallax-mcp/internal/backend/node"
-	"github.com/ParallaxProtocol/parallax-mcp/internal/backend/status"
-	"github.com/ParallaxProtocol/parallax-mcp/internal/config"
-	"github.com/ParallaxProtocol/parallax-mcp/internal/httpx"
-	"github.com/ParallaxProtocol/parallax-mcp/internal/lax"
-	"github.com/ParallaxProtocol/parallax-mcp/internal/server"
 	"github.com/ParallaxProtocol/parallax-mcp/internal/testutil"
-	"github.com/ParallaxProtocol/parallax-mcp/internal/tools"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/backend/blockscout"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/backend/node"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/backend/status"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/config"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/httpx"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/lax"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/server"
+	"github.com/ParallaxProtocol/parallax-mcp/pkg/tools"
 )
 
 // Known mainnet data.

@@ -1,6 +1,6 @@
 .git
 bin
 *.md
-!internal/resources/**/*.md
+!pkg/resources/**/*.md
 config.yaml
 .parallax

@@ -19,7 +19,7 @@ repo=${PARALLAX_REPO:-$here/../parallax}
 version=${DOCS_VERSION:-v2.1.x}
 gh_repo=${GH_REPO:-ParallaxProtocol/parallax}
 ref=${1:-main}
-out=$here/internal/resources/content
+out=$here/pkg/resources/content
 
 commit=$(git -C "$repo" rev-parse "$ref^{commit}")
 echo "docs: $repo @ $ref ($commit), docs/$version"

@@ -349,17 +349,24 @@ Layout:
 ```
 cmd/parallax-mcp      the server
 cmd/mcpcall           a command-line MCP client
-internal/server       tool registration: timeouts, logging, metrics, size limits
+pkg/server            tool registration: timeouts, logging, metrics, size limits
+pkg/backend           node (RPC allowlist), blockscout, status (cache)
+pkg/tools/*           the tool groups (live: head and alert subscriptions, wait_for_new_block)
+pkg/watch             the head and alert poller behind subscriptions
+pkg/resources         resources and the embedded docs and PIPs
+pkg/prompts           prompts
+pkg/evm               ABI encoding and decoding, RPC types
+pkg/lax               units and the emission schedule
+pkg/untrusted         sanitizing and wrapping third-party text
+pkg/config            settings from flags, the environment and YAML
+pkg/metrics, pkg/httpx  Prometheus metrics and the backends' HTTP client
 internal/transport    stdio and Streamable HTTP (rate limits, health check)
-internal/backend      node (RPC allowlist), blockscout, status (cache)
-internal/tools/*      the tool groups (live: head and alert subscriptions, wait_for_new_block)
-internal/watch        the head and alert poller behind subscriptions
-internal/resources    resources and the embedded docs and PIPs
-internal/prompts      prompts
-internal/evm          ABI encoding and decoding, RPC types
-internal/lax          units and the emission schedule
-internal/untrusted    sanitizing and wrapping third-party text
+internal/testutil     fake node, explorer and status page for tests
 ```
+
+The packages under `pkg/` can be imported by other Go programs, such as
+Parallax Client, which serves these tools from its own node with
+`server.New` and its own tool groups alongside them.
 
 The node backend uses Parallax's own `rpc` package and types rather than
 go-ethereum's, because Parallax headers carry an `epochStartTime` field

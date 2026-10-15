@@ -6,7 +6,7 @@ RUN go mod download
 COPY . .
 ARG TARGETOS TARGETARCH VERSION=dev
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
-    go build -trimpath -ldflags "-s -w -X github.com/ParallaxProtocol/parallax-mcp/internal/server.Version=${VERSION}" \
+    go build -trimpath -ldflags "-s -w -X github.com/ParallaxProtocol/parallax-mcp/pkg/server.Version=${VERSION}" \
     -o /out/parallax-mcp ./cmd/parallax-mcp
 
 FROM gcr.io/distroless/static-debian12:nonroot
