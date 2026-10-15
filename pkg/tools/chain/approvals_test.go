@@ -35,7 +35,7 @@ func approvalLog(block int, token, spender, data string, forAll bool) map[string
 		"blockNumber": fmt.Sprintf("0x%x", block), "transactionHash": fmt.Sprintf("0x%064x", block), "logIndex": "0x0", "transactionIndex": "0x0"}
 }
 
-func approvalsEnv(t *testing.T) *testutil.Env {
+func approvalsEnv(t *testing.T, opts ...testutil.Options) *testutil.Env {
 	max := strings.Repeat("f", 64)
 	logs := []any{
 		approvalLog(10, erc20, router, max, false),
@@ -88,7 +88,7 @@ func approvalsEnv(t *testing.T) *testutil.Env {
 			return nil, &testutil.RPCError{Code: -32000, Message: "execution reverted"}
 		})
 		e.Explorer.Route("/api/v2/addresses/0x0000000000000000000000000000000000000001", `{"hash":"`+router+`","name":"Router","is_contract":true,"is_verified":true}`)
-	})
+	}, opts...)
 }
 
 func TestAuditTokenApprovals(t *testing.T) {
@@ -139,5 +139,18 @@ func TestAuditTokenApprovalsBounds(t *testing.T) {
 	e := approvalsEnv(t)
 	if _, errText := e.Call(t, "audit_token_approvals", map[string]any{"owner": owner, "from_block": 99999}); errText == "" {
 		t.Fatal("from_block past the head accepted")
+	}
+}
+
+func TestAuditTokenApprovalsWithoutExplorer(t *testing.T) {
+	e := approvalsEnv(t, testutil.NodeOnly)
+	out := e.MustCall(t, "audit_token_approvals", map[string]any{"owner": owner})
+	if len(out["approvals"].([]any)) != 3 || out["errors"] != nil {
+		t.Fatalf("want the 3 active approvals and no errors: %v", out)
+	}
+	for _, a := range out["approvals"].([]any) {
+		if testutil.Get(a, "spender", "name") != nil {
+			t.Errorf("spender named without an explorer: %v", a)
+		}
 	}
 }

@@ -798,6 +798,9 @@ func (t *tools) resolveMethod(ctx context.Context, to util.Address, fn, abiJSON 
 			return nil, "", server.Inputf("%v", err)
 		}
 	} else {
+		if t.r.Explorer == nil {
+			return nil, "", server.Inputf("no explorer is configured to fetch the verified ABI of %s; pass abi, or a full signature such as %q", to.Hex(), fn+"(address) returns (uint256)")
+		}
 		var err error
 		a, err = t.verifiedABI(ctx, to)
 		if err != nil {

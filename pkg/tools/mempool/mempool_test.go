@@ -10,7 +10,7 @@ import (
 
 const sender = "0x38432a328b3c6f15582292f7235F17b08A98C6AB"
 
-func newEnv(t *testing.T, modules map[string]string) *testutil.Env {
+func newEnv(t *testing.T, modules map[string]string, opts ...testutil.Options) *testutil.Env {
 	return testutil.NewEnv(t, []func(*server.Registrar){mempool.Register}, func(e *testutil.Env) {
 		e.Node.Result("rpc_modules", modules)
 		e.Node.Result("eth_gasPrice", "0x3b9aca00")
@@ -23,7 +23,7 @@ func newEnv(t *testing.T, modules map[string]string) *testutil.Env {
 			"queued": map[string]any{sender: map[string]string{"10": "0x2CAa9795cd62261f96e40B8448b33636FF5e249a: 1 wei + 21000 gas × 2000000000 wei"}},
 		})
 		e.Status.Route("/api/v2/stats", `{"mempool":{"pending":3,"pressure":0.01,"blocksToClear":1},"nodes":{},"uptime":{}}`)
-	})
+	}, opts...)
 }
 
 func TestMempoolStatus(t *testing.T) {
@@ -55,5 +55,13 @@ func TestMempoolTransactionsSortedByPrice(t *testing.T) {
 	}
 	if testutil.Get(out, "transactions", 2, "state") != "pending" || testutil.Get(out, "transactions", 1, "state") != "queued" {
 		t.Fatalf("states: %v", out["transactions"])
+	}
+}
+
+func TestMempoolStatusWithoutStatusPage(t *testing.T) {
+	e := newEnv(t, map[string]string{"eth": "1.0", "txpool": "1.0"}, testutil.NodeOnly)
+	out := e.MustCall(t, "mempool_status", nil)
+	if testutil.Get(out, "node", "pending") != float64(2) || out["network"] != nil || testutil.Get(out, "errors", "status_page") != "no status page is configured" {
+		t.Fatalf("got %v", out)
 	}
 }

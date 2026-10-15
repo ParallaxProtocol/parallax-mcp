@@ -301,3 +301,22 @@ func TestGasPriceSmartFee(t *testing.T) {
 		t.Fatalf("fallback flag: %v", out)
 	}
 }
+
+// Without an explorer, as when served from a local node, calldata and events
+// still decode with the standard ABI, nothing is reported as failed, and a
+// bare function name says why it cannot be resolved.
+func TestWithoutExplorer(t *testing.T) {
+	e := newEnv(t, testutil.NodeOnly)
+	out := e.MustCall(t, "get_transaction", map[string]any{"hash": txHash})
+	if out["hash"] != txHash || out["decoded_input"] != nil || out["errors"] != nil {
+		t.Fatalf("transaction: %v", out)
+	}
+	out = e.MustCall(t, "get_receipt", map[string]any{"hash": txHash})
+	if testutil.Get(out, "logs", 0, "event", "source") != "standard" || out["errors"] != nil {
+		t.Fatalf("receipt: %v", out)
+	}
+	_, errText := e.Call(t, "call_contract", map[string]any{"to": token, "function": "balanceOf", "args": []any{vault}})
+	if !strings.Contains(errText, "no explorer is configured") {
+		t.Fatalf("bare function name: %q", errText)
+	}
+}

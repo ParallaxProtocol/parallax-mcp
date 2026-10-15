@@ -27,7 +27,7 @@ type env struct {
 	sent []string
 }
 
-func newEnv(t *testing.T, broadcast bool) *env {
+func newEnv(t *testing.T, broadcast bool, opts ...testutil.Options) *env {
 	e := &env{}
 	e.Env = testutil.NewEnv(t, []func(*server.Registrar){tx.Register}, func(te *testutil.Env) {
 		te.Node.Result("eth_getTransactionCount", "0x7")
@@ -51,10 +51,10 @@ func newEnv(t *testing.T, broadcast bool) *env {
 			_ = parsed.UnmarshalBinary(b)
 			return parsed.Hash().Hex(), nil
 		})
-	}, func(c *config.Config) {
+	}, append([]testutil.Options{func(c *config.Config) {
 		c.Groups = []string{config.GroupTx}
 		c.AllowBroadcast = broadcast
-	})
+	}}, opts...)...)
 	return e
 }
 
@@ -231,4 +231,18 @@ func toStrings(v any) []string {
 		out = append(out, s.(string))
 	}
 	return out
+}
+
+func TestWithoutExplorer(t *testing.T) {
+	e := newEnv(t, false, testutil.NodeOnly)
+	_, errText := e.Call(t, "build_unsigned_tx", map[string]any{"from": recipient, "to": recipient, "function": "transfer", "args": []any{recipient, "1"}})
+	if !strings.Contains(errText, "no explorer is configured") {
+		t.Fatalf("bare function name: %q", errText)
+	}
+	out := e.MustCall(t, "build_unsigned_tx", map[string]any{"from": recipient, "to": recipient, "function": "transfer(address,uint256)", "args": []any{recipient, "1"}})
+	raw, _ := sign(t, out)
+	dec := e.MustCall(t, "decode_tx", map[string]any{"raw": raw})
+	if testutil.Get(dec, "decoded_input", "source") != "standard" || dec["errors"] != nil {
+		t.Fatalf("decoded: %v", dec)
+	}
 }

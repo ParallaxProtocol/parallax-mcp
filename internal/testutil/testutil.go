@@ -208,6 +208,10 @@ type Env struct {
 // Options adjusts the configuration of an Env.
 type Options func(*config.Config)
 
+// NodeOnly configures no explorer and no status page, as when the tools are
+// served from a local node.
+func NodeOnly(c *config.Config) { c.ExplorerURL, c.ExplorerStatsURL, c.StatusURL = "", "", "" }
+
 // NewEnv starts fake backends and a server with the given tool groups
 // registered, connected to an in-memory client.
 func NewEnv(t testing.TB, register []func(*server.Registrar), setup func(*Env), opts ...Options) *Env {
@@ -230,14 +234,16 @@ func NewEnv(t testing.TB, register []func(*server.Registrar), setup func(*Env), 
 	}
 	t.Cleanup(n.Close)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	deps := server.Deps{
-		Cfg:           cfg,
-		Node:          n,
-		Explorer:      blockscout.New(httpx.Options{BaseURL: cfg.ExplorerURL, Timeout: cfg.BackendTimeout}),
-		ExplorerStats: blockscout.NewStats(httpx.Options{BaseURL: cfg.StatsURL(), Timeout: cfg.BackendTimeout}),
-		Status:        status.New(httpx.Options{BaseURL: cfg.StatusURL, Timeout: cfg.BackendTimeout}, time.Minute),
-		Log:           log,
-		Now:           func() time.Time { return e.Now },
+	deps := server.Deps{Cfg: cfg, Node: n, Log: log, Now: func() time.Time { return e.Now }}
+	// Backends without a URL are left nil, as cmd/parallax-mcp does.
+	if cfg.ExplorerURL != "" {
+		deps.Explorer = blockscout.New(httpx.Options{BaseURL: cfg.ExplorerURL, Timeout: cfg.BackendTimeout})
+	}
+	if u := cfg.StatsURL(); u != "" {
+		deps.ExplorerStats = blockscout.NewStats(httpx.Options{BaseURL: u, Timeout: cfg.BackendTimeout})
+	}
+	if cfg.StatusURL != "" {
+		deps.Status = status.New(httpx.Options{BaseURL: cfg.StatusURL, Timeout: cfg.BackendTimeout}, time.Minute)
 	}
 	ctx := context.Background()
 	e.Reg = server.New(ctx, deps, register...)

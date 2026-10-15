@@ -306,6 +306,8 @@ func (t *tools) calldata(ctx context.Context, to *util.Address, in buildIn, p *s
 			if err != nil {
 				return nil, "", server.Inputf("%v", err)
 			}
+		} else if t.r.Explorer == nil {
+			return nil, "", server.Inputf("no explorer is configured to fetch the verified ABI of %s; pass abi or a full signature", to.Hex())
 		} else if a, err = evm.VerifiedABI(ctx, t.r.Explorer, *to); err != nil {
 			return nil, "", fmt.Errorf("fetching the verified ABI: %w; pass a full signature instead", err)
 		} else if a == nil {

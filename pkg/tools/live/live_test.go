@@ -31,10 +31,10 @@ func chain(head *atomic.Uint64) func(*testutil.Env) {
 	}
 }
 
-func newEnv(t *testing.T, head *atomic.Uint64) *testutil.Env {
-	return testutil.NewEnv(t, []func(*server.Registrar){live.Register}, chain(head), func(c *config.Config) {
+func newEnv(t *testing.T, head *atomic.Uint64, opts ...testutil.Options) *testutil.Env {
+	return testutil.NewEnv(t, []func(*server.Registrar){live.Register}, chain(head), append([]testutil.Options{func(c *config.Config) {
 		c.HeadPollInterval = 50 * time.Millisecond
-	})
+	}}, opts...)...)
 }
 
 func TestSubscribersAreNotifiedOfNewBlocks(t *testing.T) {
@@ -112,5 +112,24 @@ func TestWaitForNewBlock(t *testing.T) {
 	}
 	if _, errText := e.Call(t, "wait_for_new_block", map[string]any{"timeout_seconds": 3600}); errText == "" {
 		t.Fatal("a one hour wait was accepted")
+	}
+}
+
+// Without a status page the alerts resource is left out; the head and
+// wait_for_new_block only need the node.
+func TestWithoutStatusPage(t *testing.T) {
+	var head atomic.Uint64
+	head.Store(700)
+	e := newEnv(t, &head, testutil.NodeOnly)
+	res, err := e.Client.ListResources(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Resources) != 1 || res.Resources[0].URI != "parallax://chain/head" {
+		t.Fatalf("resources: %v", res.Resources)
+	}
+	out := e.MustCall(t, "wait_for_new_block", map[string]any{"after_block": 699})
+	if out["new_block"] != true || testutil.Get(out, "block", "number") != float64(700) {
+		t.Fatalf("got %v", out)
 	}
 }
