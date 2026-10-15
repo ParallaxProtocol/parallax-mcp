@@ -5,6 +5,7 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -40,6 +41,9 @@ type Deps struct {
 	Log           *slog.Logger
 	// Now is time.Now outside tests.
 	Now func() time.Time
+	// Instructions replaces the Instructions sent to clients, for a program
+	// serving these tools with its own; it should include Conventions.
+	Instructions string
 }
 
 // BatchElem is one call of a node batch request.
@@ -304,11 +308,18 @@ func Add[In any](r *Registrar, spec Spec, h func(ctx context.Context, in In) (an
 	})
 }
 
-// Instructions is sent to clients at initialization; models read it once
-// per session.
-const Instructions = `Read-only access to the Parallax network (chain ID 2110): a proof-of-work EVM chain with 10 minute blocks, XHash mining, a 21,000,000 LAX supply cap and Bitcoin's reward schedule (50 LAX per block, halving every 210,000 blocks).
+// Instructions is sent to clients at initialization, unless Deps gives
+// others; models read it once per session.
+const Instructions = `Read-only access to the Parallax network (chain ID 2110): ` + Chain + `
 
-Conventions in every tool result:
+` + Conventions
+
+// Chain describes the Parallax network, for instructions of one's own.
+const Chain = `a proof-of-work EVM chain with 10 minute blocks, XHash mining, a 21,000,000 LAX supply cap and Bitcoin's reward schedule (50 LAX per block, halving every 210,000 blocks).`
+
+// Conventions explains the tools' results and the server's rules. A
+// program serving these tools with instructions of its own includes it.
+const Conventions = `Conventions in every tool result:
 - Amounts of LAX come as {"wei": "...", "lax": "..."}. 1 LAX = 10^18 wei. Wei is exact; prefer it for arithmetic.
 - Gas prices are in wei unless a field says gwei (1 gwei = 10^9 wei). Parallax has no EIP-1559 base fee: gasPrice is the whole fee per gas.
 - Times are Unix seconds unless a field name ends in _ms or says otherwise; durations are seconds.
@@ -330,7 +341,7 @@ func New(ctx context.Context, deps Deps, register ...func(*Registrar)) *Registra
 		Version:    Version,
 		WebsiteURL: "https://parallaxprotocol.org",
 	}, &mcp.ServerOptions{
-		Instructions:       Instructions,
+		Instructions:       cmp.Or(deps.Instructions, Instructions),
 		Logger:             deps.Log,
 		SubscribeHandler:   func(ctx context.Context, req *mcp.SubscribeRequest) error { return r.subscribe(ctx, req) },
 		UnsubscribeHandler: func(context.Context, *mcp.UnsubscribeRequest) error { return nil },
