@@ -22,11 +22,11 @@ func TestSearchRanksTheRightPage(t *testing.T) {
 		path   string
 		within int
 	}{
-		"mining pool setup": {"guides/mining/pool", 1},
+		"mining pool setup": {"hashwarp/pool-mining", 1},
 		// The exchange guide's withdrawals page explains using the estimator
 		// and ranks alongside the PIP that explains how it works
 		"how does the fee estimator work": {"pip-0004", 2},
-		"run a node over tor":             {"parallax-client/fundamentals/tor", 1},
+		"run a node over tor":             {"client/fundamentals/tor", 1},
 		"difficulty adjustment ASERT":     {"pip-0002", 1},
 		"metamask network settings":       {"guides/wallets/metamask", 1},
 		"connect claude mcp":              {"guides/ai/parallax-mcp", 1},
@@ -74,9 +74,16 @@ func TestReadDocLookupAndPaging(t *testing.T) {
 			t.Errorf("%s resolved to %v", ref, out["path"])
 		}
 	}
-	for _, ref := range []string{"guides/mining/pool", "parallax://docs/guides/mining/pool", "https://docs.parallaxprotocol.org/v2.1.x/guides/mining/pool"} {
+	for _, ref := range []string{"hashwarp/pool-mining", "parallax://docs/hashwarp/pool-mining", "https://docs.parallaxprotocol.org/hashwarp/pool-mining",
+		// the docs' old layout
+		"guides/mining/pool", "https://docs.parallaxprotocol.org/v2.1.x/guides/mining/pool"} {
 		if out := e.MustCall(t, "read_doc", map[string]any{"path": ref}); out["title"] != "Mining on a Pool" {
 			t.Errorf("%s: %v", ref, out["title"])
+		}
+	}
+	for _, ref := range []string{"client/fundamentals/tor", "parallax-client/fundamentals/tor", "https://docs.parallaxprotocol.org/v2.0.x/parallax-client/fundamentals/tor"} {
+		if out := e.MustCall(t, "read_doc", map[string]any{"path": ref}); out["path"] != "client/fundamentals/tor" {
+			t.Errorf("%s resolved to %v", ref, out["path"])
 		}
 	}
 

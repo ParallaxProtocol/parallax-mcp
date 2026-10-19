@@ -15,7 +15,7 @@ once.
 The [network status page](https://status.parallaxprotocol.org) measures it
 continuously and publishes the result, with the evidence behind it, as
 JSON. This page explains the method and how to turn it into a deposit
-policy. The [Network status API](./status-api) page is the reference for
+policy. The [Network status API](/exchange-integration/status-api) page is the reference for
 reading the data, and ends with the policy below written as code.
 
 <Warning>
@@ -218,11 +218,11 @@ loss.
 
 **3. Halt conditions.** A short list of signals that hold or pause
 deposits, below. The fields they name are described in
-[Fields for a deposit policy](./status-api#fields-for-a-deposit-policy).
+[Fields for a deposit policy](/exchange-integration/status-api#fields-for-a-deposit-policy).
 
 **4. Withdrawals stay open.** These risks are to deposits. A reorganization
 can also drop a withdrawal you sent, but that is recovered by rebroadcasting
-the same signed transaction (see [Withdrawals](./withdrawals#after-broadcast)).
+the same signed transaction (see [Withdrawals](/exchange-integration/withdrawals#after-broadcast)).
 
 ### Halt conditions
 
@@ -238,7 +238,7 @@ the same signed transaction (see [Withdrawals](./withdrawals#after-broadcast)).
 | No block for over 2 hours (`serverTime − bestBlock.timestamp`) | Status page, your nodes | Hold new credits; usually goes with a quiet large miner, so check `watch` |
 | `majority` is `true` | Status page, your node | Switch to cost-based counts and lower caps, or suspend deposits, by your risk appetite |
 | `confirmations.judged` is `false`, or `levels` give `null` without a majority | Status page | Manual review for anything above your floor |
-| Status page unreachable | | Use [your own largest-share figure](./status-api#what-the-status-page-can-and-cannot-tell-you) and the table above; keep your node checks |
+| Status page unreachable | | Use [your own largest-share figure](/exchange-integration/status-api#what-the-status-page-can-and-cannot-tell-you) and the table above; keep your node checks |
 
-[A policy in code](./status-api#a-policy-in-code) puts these rules together
+[A policy in code](/exchange-integration/status-api#a-policy-in-code) puts these rules together
 in Python.

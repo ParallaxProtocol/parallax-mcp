@@ -13,13 +13,13 @@ description: "Parallax mainnet parameters for listing teams and integrators: cha
 | **Network ID** | `2110` |
 | **Genesis hash** | `0x96b239e015d50f5c3f11b80733e5f38c95882c072719507b7be1a59db4975457` |
 | **Launched** | 28 October 2025, 19:00 UTC |
-| **Testnet** | None at the moment. See [Testing your integration](./overview#testing-your-integration) |
+| **Testnet** | None at the moment. See [Testing your integration](/exchange-integration/overview#testing-your-integration) |
 
 ## Consensus
 
 | | |
 |---|---|
-| **Algorithm** | Proof of work, [XHash](/v2.1.x/parallax-protocol/foundational-topics/consensus/algorithms/xhash) |
+| **Algorithm** | Proof of work, [XHash](/protocol/foundational-topics/consensus/algorithms/xhash) |
 | **Target block time** | 600 seconds (10 minutes) |
 | **Difficulty adjustment** | Every block, by ASERT (2-day half-life), since block 17,560 |
 | **Finality** | Probabilistic only. No checkpoints, no finality gadget |
@@ -37,8 +37,8 @@ description: "Parallax mainnet parameters for listing teams and integrators: cha
 | **Transaction types** | Legacy (type 0) and access-list (type 1). **Type 2 (EIP-1559) is rejected** |
 | **Replay protection** | EIP-155 signatures with chain ID 2110, required by default |
 | **Plain transfer** | 21,000 gas |
-| **Block header** | Ethereum's, without `sha3Uncles` and with `epochStartTime`. See [Block headers](./ethereum-differences#block-headers) |
-| **EVM** | Berlin. No `PUSH0`, `BASEFEE` or later opcodes. See [Opcodes](/v2.1.x/parallax-protocol/foundational-topics/pvm/opcodes) |
+| **Block header** | Ethereum's, without `sha3Uncles` and with `epochStartTime`. See [Block headers](/exchange-integration/ethereum-differences#block-headers) |
+| **EVM** | Berlin. No `PUSH0`, `BASEFEE` or later opcodes. See [Opcodes](/protocol/foundational-topics/pvm/opcodes) |
 
 ## Public services
 
@@ -46,7 +46,7 @@ description: "Parallax mainnet parameters for listing teams and integrators: cha
 |---|---|
 | **Source and releases** | [github.com/ParallaxProtocol/parallax](https://github.com/ParallaxProtocol/parallax/releases) |
 | **Block explorer** | [explorer.parallaxprotocol.org](https://explorer.parallaxprotocol.org) |
-| **Network status** | [status.parallaxprotocol.org](https://status.parallaxprotocol.org), with a [JSON API](./status-api) |
+| **Network status** | [status.parallaxprotocol.org](https://status.parallaxprotocol.org), with a [JSON API](/exchange-integration/status-api) |
 | **Public RPC** | `https://rpc.parallaxprotocol.org`, for testing only. Run your own nodes in production |
 | **Whitepaper** | [parallaxprotocol.org/parallax.pdf](https://parallaxprotocol.org/parallax.pdf) |
 
@@ -77,7 +77,7 @@ that are specific to Parallax, or that behave differently from Ethereum.
 
 | Method | Returns |
 |---|---|
-| `eth_estimateSmartFee(confTarget)` | `{gasPrice, confTarget, successRate, legacyFallback}`: a gas price expected to confirm within `confTarget` blocks, from a port of Bitcoin Core's fee estimator. See [Fees](./withdrawals#fees) |
+| `eth_estimateSmartFee(confTarget)` | `{gasPrice, confTarget, successRate, legacyFallback}`: a gas price expected to confirm within `confTarget` blocks, from a port of Bitcoin Core's fee estimator. See [Fees](/exchange-integration/withdrawals#fees) |
 | `eth_getTotalSupply()` | LAX issued up to the head block, in wei, as a decimal string |
 | `eth_getCirculatingSupply()` | The same as `eth_getTotalSupply` |
 
@@ -92,14 +92,14 @@ The two supply methods are also served as `xhash_getTotalSupply` and
 | `eth_sendRawTransaction` | Rejects type 2 transactions, transactions without EIP-155 replay protection, and transactions whose fee exceeds `--rpc.txfeecap` (1 LAX by default) |
 | `eth_gasPrice` | The `eth_estimateSmartFee` price for a 2-block target. There is no base fee to add |
 | `eth_maxPriorityFeePerGas` | The same value as `eth_gasPrice`. Only meaningful for type 2 transactions, which Parallax rejects |
-| `eth_getBlockBy*`, `eth_getHeaderBy*` | Headers have no `sha3Uncles` or `baseFeePerGas`, and add `epochStartTime`. Blocks have no `uncles` list. See [Block headers](./ethereum-differences#block-headers) |
+| `eth_getBlockBy*`, `eth_getHeaderBy*` | Headers have no `sha3Uncles` or `baseFeePerGas`, and add `epochStartTime`. Blocks have no `uncles` list. See [Block headers](/exchange-integration/ethereum-differences#block-headers) |
 | `eth_getUncle*` | Always `null`. Kept for compatibility |
-| `eth_getTransactionByHash`, `eth_getTransactionReceipt` | Find transactions in the last 52,560 blocks (about a year) unless the node runs with `--txlookuplimit 0`. See [History and indexing](./node#history-and-indexing) |
+| `eth_getTransactionByHash`, `eth_getTransactionReceipt` | Find transactions in the last 52,560 blocks (about a year) unless the node runs with `--txlookuplimit 0`. See [History and indexing](/exchange-integration/node#history-and-indexing) |
 
 ### Namespaces
 
 HTTP and WebSocket serve `eth`, `net` and `web3` by default. `txpool`
 (mempool contents) and `debug` (tracing, needed to find
-[transfers made by contracts](./deposits#transfers-made-by-contracts)) must
+[transfers made by contracts](/exchange-integration/deposits#transfers-made-by-contracts)) must
 be enabled with `--http.api`. See
-[Lock down JSON-RPC](./node#lock-down-json-rpc) before you do.
+[Lock down JSON-RPC](/exchange-integration/node#lock-down-json-rpc) before you do.

@@ -85,7 +85,7 @@ can miss blocks while it reconnects.
 When a contract sends LAX, no transaction names your address. The value
 moves in an internal call, visible only by re-executing the transaction.
 The deposit indexer must serve the `debug` namespace on localhost (see
-[Running your nodes](./node#lock-down-json-rpc)).
+[Running your nodes](/exchange-integration/node#lock-down-json-rpc)).
 
 ```json
 {"jsonrpc":"2.0","id":1,"method":"debug_traceBlockByNumber",
@@ -154,7 +154,7 @@ next block wins. Blocks on the losing side disappear, and so do the
 transactions in them, unless they are also in the winning blocks. With
 10-minute blocks, one-block reorganizations are uncommon but normal. Deeper
 ones mean something unusual, possibly an attack. See
-[Confirmations](./confirmations).
+[Confirmations](/exchange-integration/confirmations).
 
 Your scanner must expect blocks to disappear:
 
@@ -188,13 +188,13 @@ When a deposit reaches the number your policy requires:
 1. Fetch the block at height *n* again and check that its hash is still the
    one you stored for the deposit.
 2. Check that your node is healthy: synced, with peers, and with a recent
-   head. See [Health checks](./node#health-checks).
-3. Check that none of your [halt conditions](./confirmations#halt-conditions)
+   head. See [Health checks](/exchange-integration/node#health-checks).
+3. Check that none of your [halt conditions](/exchange-integration/confirmations#halt-conditions)
    holds.
 4. Credit it.
 
 How many confirmations to require, and when not to credit at all, is the
-subject of [Confirmations](./confirmations). It is not a constant.
+subject of [Confirmations](/exchange-integration/confirmations). It is not a constant.
 
 ## Sweeping
 
@@ -213,4 +213,4 @@ they are credited.
 Set a **minimum deposit** at least a few times the cost of a sweep. Anyone
 can send tiny amounts to your addresses, and sweeping each one would cost
 more than it is worth. Sweep transactions are ordinary withdrawals: sign and
-broadcast them as described in [Withdrawals](./withdrawals).
+broadcast them as described in [Withdrawals](/exchange-integration/withdrawals).

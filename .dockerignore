@@ -4,3 +4,4 @@ bin
 !pkg/resources/**/*.md
 config.yaml
 .parallax
+.parallax-docs

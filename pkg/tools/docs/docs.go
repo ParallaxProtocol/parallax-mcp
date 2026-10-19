@@ -63,7 +63,7 @@ Use it whenever a question is about how Parallax works or how to do something wi
 	})
 
 	server.Add(r, server.Spec{Group: config.GroupDocs, Name: "read_doc", Title: "Read a Parallax doc",
-		Description: `Returns a page of the Parallax documentation or a PIP in full, as Markdown: by "path" from search_docs (such as "guides/mining/pool" or "pip-0004"; "PIP-4", a parallax://docs URI or a docs.parallaxprotocol.org URL also work). Long pages come in parts of "max_bytes" (default 24,000): pass "next_offset" back as "offset" for the rest. Includes the page's published url, to cite.`,
+		Description: `Returns a page of the Parallax documentation or a PIP in full, as Markdown: by "path" from search_docs (such as "hashwarp/pool-mining" or "pip-0004"; "PIP-4", a parallax://docs URI or a docs.parallaxprotocol.org URL also work). Long pages come in parts of "max_bytes" (default 24,000): pass "next_offset" back as "offset" for the rest. Includes the page's published url, to cite.`,
 	}, func(ctx context.Context, in readIn) (any, error) {
 		d := resources.Lookup(in.Path)
 		if d == nil {
@@ -110,7 +110,7 @@ type searchIn struct {
 }
 
 type readIn struct {
-	Path     string `json:"path" jsonschema:"page path from search_docs, such as guides/mining/pool or pip-0004"`
+	Path     string `json:"path" jsonschema:"page path from search_docs, such as hashwarp/pool-mining or pip-0004"`
 	Offset   int    `json:"offset,omitempty" jsonschema:"byte offset to start from, for long pages (next_offset of the previous call)"`
 	MaxBytes int    `json:"max_bytes,omitempty" jsonschema:"how much to return, 1000-120000 bytes (default 24000)"`
 }

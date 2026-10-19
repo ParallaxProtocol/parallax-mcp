@@ -49,11 +49,11 @@ func Register(r *server.Registrar) {
 	docs := docIndex()
 	s.AddResource(&mcp.Resource{
 		URI: uriDocs, Name: "docs-index", Title: "Parallax documentation index", MIMEType: "text/markdown",
-		Description: fmt.Sprintf("Index of the %d pages of the Parallax documentation (docs.parallaxprotocol.org, %s, %s at %s): each page's resource URI, title and summary. Read a page with parallax://docs/{path}.", len(docs), src.Docs.Version, src.Docs.Ref, short(src.Docs.Commit)),
+		Description: fmt.Sprintf("Index of the %d pages of the Parallax documentation (docs.parallaxprotocol.org, %s at %s): each page's resource URI, title and summary. Read a page with parallax://docs/{path}.", len(docs), src.Docs.Ref, short(src.Docs.Commit)),
 	}, static(uriDocs, "text/markdown", renderIndex("Parallax documentation", src.docsNote(), docs)))
 	s.AddResourceTemplate(&mcp.ResourceTemplate{
 		URITemplate: "parallax://docs/{+path}", Name: "docs-page", Title: "Parallax documentation page", MIMEType: "text/markdown",
-		Description: "One page of the Parallax documentation by its path, such as parallax://docs/guides/mining/pool. See parallax://docs for the list.",
+		Description: "One page of the Parallax documentation by its path, such as parallax://docs/hashwarp/pool-mining. See parallax://docs for the list.",
 	}, page("content/docs", uriDocs+"/", ".mdx"))
 
 	pips := pipIndex()
@@ -69,7 +69,7 @@ func Register(r *server.Registrar) {
 
 type sourceInfo struct {
 	Docs struct {
-		Repository, Ref, Commit, Version string
+		Repository, Ref, Commit string
 	}
 	PIPs struct {
 		Discussions, Fetched string
@@ -85,7 +85,7 @@ func source() sourceInfo {
 }
 
 func (s sourceInfo) docsNote() string {
-	return fmt.Sprintf("Snapshot of docs/%s in %s at %s (%s), as published at https://docs.parallaxprotocol.org.", s.Docs.Version, s.Docs.Repository, s.Docs.Ref, short(s.Docs.Commit))
+	return fmt.Sprintf("Snapshot of %s at %s (%s), as published at https://docs.parallaxprotocol.org. The client pages cover its current major release.", s.Docs.Repository, s.Docs.Ref, short(s.Docs.Commit))
 }
 
 func (s sourceInfo) pipsNote() string {

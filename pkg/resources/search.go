@@ -13,7 +13,7 @@ import (
 
 // Doc is one embedded document: a docs page or a PIP.
 type Doc struct {
-	// Path identifies it: "guides/mining/pool" for a page, "pip-0004" for a PIP.
+	// Path identifies it: "hashwarp/pool-mining" for a page, "pip-0004" for a PIP.
 	Path        string
 	Kind        string // "docs" or "pip"
 	URI         string
@@ -41,7 +41,22 @@ var (
 	reLink    = regexp.MustCompile(`\]\([^)]*\)`)
 	stopwords = map[string]bool{"the": true, "a": true, "an": true, "and": true, "or": true, "of": true, "to": true, "in": true, "is": true, "it": true, "on": true, "for": true, "how": true, "do": true, "i": true, "what": true, "with": true, "can": true, "my": true, "does": true, "are": true, "be": true, "by": true, "as": true, "at": true, "this": true, "that": true}
 	docsSite  = "https://docs.parallaxprotocol.org/"
+	// reVersioned matches the version folder of the docs' old layout, in
+	// which every section sat under one ("v2.1.x/guides/...", "v2.0.0/...").
+	reVersioned = regexp.MustCompile(`^v\d+\.\d+\.(x|\d+)/`)
 )
+
+// movedDocs maps paths of the docs' old layout to the new one, so paths and
+// URLs that clients learned before the docs were split into sections still
+// resolve. Longer prefixes come first.
+var movedDocs = []struct{ from, to string }{
+	{"guides/mining/gpu", "hashwarp/getting-started"},
+	{"guides/mining/pool", "hashwarp/pool-mining"},
+	{"guides/mining/troubleshooting", "hashwarp/troubleshooting"},
+	{"parallax-protocol/advanced/networking/pip-0006", "protocol/advanced/networking/discovery"},
+	{"parallax-client/", "client/"},
+	{"parallax-protocol/", "protocol/"},
+}
 
 func buildIndex() {
 	src := source()
@@ -63,7 +78,7 @@ func buildIndex() {
 			}
 			switch kind {
 			case "docs":
-				doc.URL = docsSite + src.Docs.Version + "/" + rel
+				doc.URL = docsSite + rel
 			case "pip":
 				doc.URL = frontMatterField(p, "source")
 				if doc.URL == "" {
@@ -108,14 +123,28 @@ func Docs() []*Doc {
 	return index
 }
 
-// Lookup finds a document by path ("guides/mining/pool", "pip-0004",
-// "PIP-4"), resource URI, or published docs URL.
+// Lookup finds a document by path ("hashwarp/pool-mining", "pip-0004",
+// "PIP-4"), resource URI, or published docs URL, including paths and URLs of
+// the docs' old layout ("guides/mining/pool", ".../v2.1.x/parallax-client/...").
 func Lookup(ref string) *Doc {
 	ref = strings.TrimSpace(ref)
-	for _, prefix := range []string{uriDocs + "/", uriPIPs + "/", docsSite + source().Docs.Version + "/", docsSite} {
+	for _, prefix := range []string{uriDocs + "/", uriPIPs + "/", docsSite} {
 		ref = strings.TrimPrefix(ref, prefix)
 	}
 	ref = strings.Trim(strings.TrimSuffix(strings.TrimSuffix(ref, ".mdx"), ".md"), "/")
+	ref = reVersioned.ReplaceAllString(ref, "")
+	if d := lookupPath(ref); d != nil {
+		return d
+	}
+	for _, mv := range movedDocs {
+		if strings.HasPrefix(ref, mv.from) {
+			return lookupPath(mv.to + strings.TrimPrefix(ref, mv.from))
+		}
+	}
+	return nil
+}
+
+func lookupPath(ref string) *Doc {
 	low := strings.ToLower(ref)
 	if n := strings.TrimLeft(strings.TrimPrefix(strings.TrimPrefix(low, "pip-"), "pip"), "0"); n != "" && strings.HasPrefix(low, "pip") && isDigits(n) {
 		low = "pip-" + strings.Repeat("0", max(0, 4-len(n))) + n

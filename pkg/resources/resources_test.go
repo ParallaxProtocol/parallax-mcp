@@ -40,10 +40,10 @@ func TestChainParameters(t *testing.T) {
 func TestDocsIndexAndPages(t *testing.T) {
 	e := newEnv(t)
 	index, err := read(t, e, "parallax://docs")
-	if err != nil || !strings.Contains(index, "parallax://docs/guides/mining/pool") {
+	if err != nil || !strings.Contains(index, "parallax://docs/hashwarp/pool-mining") {
 		t.Fatalf("index: %v", err)
 	}
-	page, err := read(t, e, "parallax://docs/guides/mining/pool")
+	page, err := read(t, e, "parallax://docs/hashwarp/pool-mining")
 	if err != nil || !strings.Contains(page, "Mining on a Pool") {
 		t.Fatalf("page: %v", err)
 	}

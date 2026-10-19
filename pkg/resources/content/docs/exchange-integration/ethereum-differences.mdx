@@ -19,8 +19,8 @@ makes replacing it more expensive.
 The JSON-RPC reflects this. The `finalized` tag is parsed, but the node
 never sets a finalized block, so it returns an error. `safe` is not accepted
 at all. Count confirmations yourself, from `latest`, as described in
-[Tracking confirmations](./deposits#tracking-confirmations), and choose how
-many with [Confirmations](./confirmations).
+[Tracking confirmations](/exchange-integration/deposits#tracking-confirmations), and choose how
+many with [Confirmations](/exchange-integration/confirmations).
 
 ## Legacy transactions only
 
@@ -33,7 +33,7 @@ Sign legacy transactions with an explicit `gasPrice` and chain ID `2110`.
 Most libraries choose legacy on their own when blocks have no
 `baseFeePerGas`, but set the type explicitly so a library upgrade does not
 change it. Price them with `eth_estimateSmartFee`. See
-[Withdrawals](./withdrawals#build-and-sign).
+[Withdrawals](/exchange-integration/withdrawals#build-and-sign).
 
 ## Block timing
 
@@ -42,7 +42,7 @@ a Poisson process: a 30-minute gap is not unusual, and an hour happens. A
 deposit with 6 confirmations has waited about an hour on average. Size
 user-facing estimates, timeouts and alerting accordingly. A node whose
 head is a few minutes old is normal; one whose head is over 2 hours old
-needs attention (see [Health checks](./node#health-checks)).
+needs attention (see [Health checks](/exchange-integration/node#health-checks)).
 
 ## Mining rewards arrive without a transaction
 
@@ -52,7 +52,7 @@ added to the miner's balance immediately, also with no transaction. If a
 miner names one of your deposit addresses as its payout address, that
 address's balance rises with nothing in any block's transaction list to
 explain it. See
-[Balance changes without a transaction](./deposits#balance-changes-without-a-transaction).
+[Balance changes without a transaction](/exchange-integration/deposits#balance-changes-without-a-transaction).
 
 ## Transaction lookups cover about a year
 
@@ -60,7 +60,7 @@ Nodes index transactions by hash for the last 52,560 blocks, about one year
 at 10 minutes. Older transactions are still in their blocks, but
 `eth_getTransactionByHash` and `eth_getTransactionReceipt` return nothing
 for them. Run your indexing nodes with `--txlookuplimit 0` to index the
-whole chain. See [History and indexing](./node#history-and-indexing).
+whole chain. See [History and indexing](/exchange-integration/node#history-and-indexing).
 
 ## Contracts must target Berlin
 
@@ -69,7 +69,7 @@ forwarders, sweepers, batch-payment contracts or multisigs, compile them
 with `evmVersion: "berlin"`. Solidity 0.8.20 and later emit `PUSH0` by
 default, which is an invalid opcode here, so a contract compiled with the
 defaults fails on deployment or on its first call. See
-[Opcodes](/v2.1.x/parallax-protocol/foundational-topics/pvm/opcodes).
+[Opcodes](/protocol/foundational-topics/pvm/opcodes).
 
 ## Block headers
 
@@ -147,7 +147,7 @@ Keccak-256 hash of the RLP encoding of the first 11 fields above
 (`parentHash` to `timestamp`), then `extraData`, then `epochStartTime`.
 Note that `epochStartTime` comes after `extraData` here, and `mixHash` and
 `nonce` are left out, because they are the proof-of-work solution. The
-solution is valid when [XHash](/v2.1.x/parallax-protocol/foundational-topics/consensus/algorithms/xhash),
+solution is valid when [XHash](/protocol/foundational-topics/consensus/algorithms/xhash),
 run over the seal hash and the `nonce`, reproduces `mixHash` and gives a
 result no greater than (2<sup>256</sup> − 1) ÷ `difficulty`.
 
@@ -155,7 +155,7 @@ result no greater than (2<sup>256</sup> − 1) ÷ `difficulty`.
 
 | Library | Blocks and headers |
 |---|---|
-| go-ethereum `ethclient` | **Fails.** `HeaderByNumber` and `BlockByNumber` return `missing required field 'sha3Uncles' for Header`. Calls that do not decode headers, such as `BalanceAt` and `ChainID`, work. Use Parallax's own client, `github.com/ParallaxProtocol/parallax/v2/rpc/client`, which has the same methods ([Go API](/v2.1.x/parallax-client/developers/dapp/go-api)) |
+| go-ethereum `ethclient` | **Fails.** `HeaderByNumber` and `BlockByNumber` return `missing required field 'sha3Uncles' for Header`. Calls that do not decode headers, such as `BalanceAt` and `ChainID`, work. Use Parallax's own client, `github.com/ParallaxProtocol/parallax/v2/rpc/client`, which has the same methods ([Go API](/client/developers/dapp/go-api)) |
 | ethers v6 | Works. `baseFeePerGas` is `null`, so ethers signs legacy transactions |
 | viem | Works. `sha3Uncles` is `undefined` and `baseFeePerGas` `null` |
 | Others | Check that the library decodes a block without `sha3Uncles` before relying on it |

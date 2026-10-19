@@ -20,11 +20,11 @@ A sensible minimum is three nodes on separate hosts:
 | **Watcher** | An independent view of the chain for cross-checks and alerts, ideally in a different network or region | Default snap sync is fine |
 
 Comparing the head of each node against the others, and against the
-[status page](./status-api), is how you notice that
+[status page](/exchange-integration/status-api), is how you notice that
 one of them has been cut off from the network or fed a different chain. Two
 nodes on the same host or behind the same NAT protect against far less.
 
-Size the hosts from [Hardware requirements](/v2.1.x/parallax-client/getting-started/hardware-requirements).
+Size the hosts from [Hardware requirements](/client/getting-started/hardware-requirements).
 An archive node needs considerably more disk than a pruned one and grows
 with every block.
 
@@ -33,22 +33,22 @@ with every block.
 Download a release from [GitHub](https://github.com/ParallaxProtocol/parallax/releases)
 and verify its SHA256 hash before running it, or use the Docker image. Run
 only `stable` releases on mainnet, never `rc` or `unstable` builds. See
-[Installing the client](/v2.1.x/parallax-client/getting-started/installing-client)
-and [Versioning](/v2.1.x/parallax-client/fundamentals/versioning).
+[Installing the client](/client/getting-started/installing-client)
+and [Versioning](/client/fundamentals/versioning).
 
 Each release ships three binaries:
 
 - `parallaxd`, the node.
 - `parallax-cli`, a `bitcoin-cli`-style client for scripts and health checks.
-  See [Command-line RPC](/v2.1.x/parallax-client/interacting-with-parallax/command-line-rpc).
+  See [Command-line RPC](/client/interacting-with-parallax/command-line-rpc).
 - `parallax-wallet`, an offline key tool that never talks to a node. See
-  [parallax-wallet](/v2.1.x/parallax-client/tools/parallax-wallet).
+  [parallax-wallet](/client/tools/parallax-wallet).
 
 ## Configure
 
 Settings can be passed as flags or kept in a TOML file loaded with
 `--config`. Generate a template from your flags with `parallaxd dumpconfig`;
-see [Config files](/v2.1.x/parallax-client/fundamentals/config-files). Flags
+see [Config files](/client/fundamentals/config-files). Flags
 given on the command line override the file.
 
 A deposit indexer, as a systemd service:
@@ -92,7 +92,7 @@ disk, and killing it part-way forces a slower recovery on the next start.
 
 To accept inbound peers, forward TCP and UDP 32110. A node that only makes
 outbound connections still works, but nodes with inbound peers see blocks
-sooner and are harder to isolate. See [Connecting to peers](/v2.1.x/parallax-client/fundamentals/connecting-to-peers).
+sooner and are harder to isolate. See [Connecting to peers](/client/fundamentals/connecting-to-peers).
 
 ## Lock down JSON-RPC
 
@@ -117,7 +117,7 @@ serves. Security comes from where the port listens and what it serves.
   chain (`debug_setHead`) and run expensive traces. Never serve `admin`,
   `personal` or `miner` over HTTP. Use IPC for administration.
 - **Keep keys off your nodes.** Leave the node keystore empty and sign
-  withdrawals elsewhere (see [Withdrawals](./withdrawals#where-keys-live)). The
+  withdrawals elsewhere (see [Withdrawals](/exchange-integration/withdrawals#where-keys-live)). The
   node refuses to unlock accounts while HTTP or WebSocket is enabled unless
   you pass `--allow-insecure-unlock`, and you should not.
 - **Set `--http.vhosts`** to the host names your proxy forwards with, if not
@@ -143,8 +143,8 @@ How much history a node keeps decides what your scanner can ask it:
 
 A deposit indexer that has fallen behind (after downtime, or rebuilding from
 scratch) needs to trace blocks older than 128, so give it an archive node.
-See [Sync modes](/v2.1.x/parallax-client/fundamentals/sync-modes) and
-[Pruning](/v2.1.x/parallax-client/fundamentals/pruning).
+See [Sync modes](/client/fundamentals/sync-modes) and
+[Pruning](/client/fundamentals/pruning).
 
 ## Health checks
 
@@ -169,15 +169,15 @@ Alert on, and stop crediting from, a node that:
 - has a head block more than about 2 hours old. Blocks average 10 minutes,
   so a 2-hour gap is very unlikely while miners are working, and points to
   an isolated node, a network-wide halt, or a large miner holding back
-  blocks. [Confirmations](./confirmations#halt-conditions) covers
+  blocks. [Confirmations](/exchange-integration/confirmations#halt-conditions) covers
   what each means;
 - disagrees with your other nodes on the hash at a height more than a couple
   of blocks below the head. Disagreement at the very tip is a normal block
   race and settles within a block or two.
 
 The node also exports Prometheus metrics with `--metrics`. See
-[Metrics](/v2.1.x/parallax-client/monitoring/metrics) and
-[Dashboards](/v2.1.x/parallax-client/monitoring/creating-dashboards).
+[Metrics](/client/monitoring/metrics) and
+[Dashboards](/client/monitoring/creating-dashboards).
 
 ### Reporting to the status page
 
@@ -186,7 +186,7 @@ with `--prlstats`. More reporting nodes make its figures more robust, but a
 reporting node's name, client version, country and latency become public.
 Exchanges usually leave their custody nodes off it. If you want to
 contribute, report from a separate node that holds nothing; see
-[Setting up a node](/v2.1.x/guides/client/setup).
+[Setting up a node](/guides/client/setup).
 
 ## Upgrades
 
@@ -195,7 +195,7 @@ fixed, and a release is not an occasion to change them. Most releases are
 optional bug fixes and features. On the rare occasion a consensus change is
 needed, it activates at a **block height**, and the release carrying it is
 mandatory. Release notes say so explicitly. See
-[Versioning](/v2.1.x/parallax-client/fundamentals/versioning#consensus-is-not-versioned-by-releases).
+[Versioning](/client/fundamentals/versioning#consensus-is-not-versioned-by-releases).
 
 - Watch [GitHub releases](https://github.com/ParallaxProtocol/parallax/releases)
   (GitHub can notify you of new releases only).
@@ -213,4 +213,4 @@ mandatory. Release notes say so explicitly. See
 Back up what cannot be rebuilt: your signing keys, wherever they live, and
 your scanner's database. Chain data can always be resynced, though an
 archive resync takes days, so keep a recent snapshot of the indexer's data
-directory if downtime matters. See [Backup and restore](/v2.1.x/parallax-client/fundamentals/backup-and-restore).
+directory if downtime matters. See [Backup and restore](/client/fundamentals/backup-and-restore).

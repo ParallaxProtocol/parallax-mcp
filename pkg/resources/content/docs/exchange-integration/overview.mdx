@@ -21,31 +21,31 @@ network at the time.
 ## What's in this section
 
 <CardGroup cols={2}>
-  <Card title="Network reference" icon="table" href="/v2.1.x/exchange-integration/network-reference">
+  <Card title="Network reference" icon="table" href="/exchange-integration/network-reference">
     Chain ID, consensus and supply parameters, public services, and the
     JSON-RPC methods specific to Parallax.
   </Card>
-  <Card title="Differences from Ethereum" icon="code-compare" href="/v2.1.x/exchange-integration/ethereum-differences">
+  <Card title="Differences from Ethereum" icon="code-compare" href="/exchange-integration/ethereum-differences">
     Finality, transaction types, block headers and the other places an
     Ethereum integration needs changes.
   </Card>
-  <Card title="Running your nodes" icon="server" href="/v2.1.x/exchange-integration/node">
+  <Card title="Running your nodes" icon="server" href="/exchange-integration/node">
     Topology, sync and history settings, locking down JSON-RPC, health
     checks and upgrades.
   </Card>
-  <Card title="Deposits" icon="arrow-down-to-line" href="/v2.1.x/exchange-integration/deposits">
+  <Card title="Deposits" icon="arrow-down-to-line" href="/exchange-integration/deposits">
     Deposit addresses, scanning blocks and traces, reorganizations,
     crediting and sweeping.
   </Card>
-  <Card title="Withdrawals" icon="arrow-up-from-line" href="/v2.1.x/exchange-integration/withdrawals">
+  <Card title="Withdrawals" icon="arrow-up-from-line" href="/exchange-integration/withdrawals">
     Signing legacy transactions, fees, nonces, and replacing stuck
     withdrawals.
   </Card>
-  <Card title="Confirmations" icon="shield-check" href="/v2.1.x/exchange-integration/confirmations">
+  <Card title="Confirmations" icon="shield-check" href="/exchange-integration/confirmations">
     How many confirmations to wait for, from live mining data, and when to
     hold or pause deposits.
   </Card>
-  <Card title="Network status API" icon="chart-line" href="/v2.1.x/exchange-integration/status-api">
+  <Card title="Network status API" icon="chart-line" href="/exchange-integration/status-api">
     The status page's JSON API: fields, alerts, trust model, and a policy
     sketch in Python.
   </Card>
@@ -56,33 +56,33 @@ network at the time.
 <Steps>
   <Step title="Read the differences from Ethereum">
     Most integration problems come from finality, type 2 transactions and
-    block headers. [Differences from Ethereum](./ethereum-differences).
+    block headers. [Differences from Ethereum](/exchange-integration/ethereum-differences).
   </Step>
   <Step title="Run at least two nodes you control">
     One for deposits and one for withdrawals at minimum, on separate hosts,
-    with RPC reachable only from your own services. [Running your nodes](./node).
+    with RPC reachable only from your own services. [Running your nodes](/exchange-integration/node).
   </Step>
   <Step title="Test on a local chain">
     There is no public testnet. See [Testing your integration](#testing-your-integration).
   </Step>
   <Step title="Detect deposits from blocks, not from the mempool">
     Credit only transactions in blocks with a successful receipt, track them
-    by block hash, and handle reorganizations. [Deposits](./deposits).
+    by block hash, and handle reorganizations. [Deposits](/exchange-integration/deposits).
   </Step>
   <Step title="Send withdrawals as signed legacy transactions">
     Manage nonces yourself, price fees with `eth_estimateSmartFee`, and
-    replace stuck transactions by fee. [Withdrawals](./withdrawals).
+    replace stuck transactions by fee. [Withdrawals](/exchange-integration/withdrawals).
   </Step>
   <Step title="Set a confirmation policy tied to live mining data">
     A fixed number is not enough on a young proof-of-work chain. Poll the
     status page and your own nodes, scale confirmations with deposit size,
-    and define when deposits pause. [Confirmations](./confirmations) and
-    [Network status API](./status-api).
+    and define when deposits pause. [Confirmations](/exchange-integration/confirmations) and
+    [Network status API](/exchange-integration/status-api).
   </Step>
   <Step title="Watch for releases">
     Subscribe to [GitHub releases](https://github.com/ParallaxProtocol/parallax/releases)
     and run `parallaxd version-check` from monitoring. Release notes say
-    when an upgrade is mandatory. [Upgrades](./node#upgrades).
+    when an upgrade is mandatory. [Upgrades](/exchange-integration/node#upgrades).
   </Step>
 </Steps>
 
@@ -94,9 +94,9 @@ own:
 - **Functional tests.** `parallaxd --dev` starts a single-node chain
   (chain ID 1337) that seals a block as soon as a transaction arrives. It
   is quick for exercising address generation, deposit detection, sweeping
-  and withdrawals. See [Developer mode](/v2.1.x/parallax-client/developers/dapp/developer-mode).
+  and withdrawals. See [Developer mode](/client/developers/dapp/developer-mode).
 - **Reorganization drill.** Run two or more nodes on a
-  [private network](/v2.1.x/parallax-client/fundamentals/private-networks),
+  [private network](/client/fundamentals/private-networks),
   let them mine apart, then reconnect them, and check that your scanner
   orphans and rescans the replaced blocks.
 - **Mainnet.** Finish with small real deposits and withdrawals.
@@ -105,5 +105,5 @@ own:
 Questions about integrating can go to the
 [issue tracker](https://github.com/ParallaxProtocol/parallax/issues).
 Report security problems privately, as described in
-[Disclosures](/v2.1.x/parallax-client/developers/client/disclosures).
+[Disclosures](/client/developers/client/disclosures).
 </Note>

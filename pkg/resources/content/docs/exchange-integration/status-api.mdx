@@ -8,7 +8,7 @@ The [network status page](https://status.parallaxprotocol.org) watches the
 Parallax network continuously: who is mining, how evenly, whether the
 largest miner is publishing its blocks, and every reorganization its nodes
 see. Everything it shows is available as JSON, so your deposit policy can
-read the same figures. [Confirmations](./confirmations) explains what they
+read the same figures. [Confirmations](/exchange-integration/confirmations) explains what they
 mean; this page is the reference for reading them.
 
 ## Endpoint
@@ -57,7 +57,7 @@ while `watch.level` is `"critical"`. Check `watch` yourself.
 | `split` | The status page's verified nodes follow different chains, each at least 2 blocks past where they part | `critical` |
 | `reorg` | A reorganization 3 or more blocks deep. Shown for 30 minutes at depth 3 to 5, 24 hours at 6 or more | `warn` at 3 to 5, `critical` at 6 or more |
 | `majority` | One miner found more than half of the last 7 days' blocks | `critical` |
-| `withholding` | The largest miner is publishing far fewer blocks than its share predicts ([Hidden mining](./confirmations#hidden-mining)) | `warn`, then `critical` |
+| `withholding` | The largest miner is publishing far fewer blocks than its share predicts ([Hidden mining](/exchange-integration/confirmations#hidden-mining)) | `warn`, then `critical` |
 | `propagation` | Blocks take more than 15 seconds to reach 90% of the verified nodes | `warn`, `critical` above 60 seconds |
 | `slow-miner` | One miner's blocks are slow to reach the network while everyone else's are fast | `warn` |
 | `release` | Some reporting nodes run an older release than the latest | `info` |
@@ -105,7 +105,7 @@ def largest_share(blocks=1008):  # 1008 blocks is about 7 days
 ## A policy in code
 
 A sketch in Python that combines the fields above with the rules in
-[Building a policy](./confirmations#building-a-policy). It is a starting point to adapt, not a drop-in risk
+[Building a policy](/exchange-integration/confirmations#building-a-policy). It is a starting point to adapt, not a drop-in risk
 engine: set `FLOOR`, `MARGIN` and the confidence tiers from your own risk
 appetite.
 
@@ -164,5 +164,5 @@ def may_credit(s, deposit_block, head, deposit_usd, large=False):
 ```
 
 Run it at the moment of crediting, after your own checks from
-[Tracking confirmations](./deposits#tracking-confirmations): the block hash
+[Tracking confirmations](/exchange-integration/deposits#tracking-confirmations): the block hash
 is still the one you recorded, and your nodes are healthy and agree.

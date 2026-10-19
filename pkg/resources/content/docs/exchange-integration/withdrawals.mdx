@@ -20,9 +20,9 @@ holds unlocked keys turns any RPC exposure into a loss of funds.
   legacy transactions works with chain ID `2110`.
 - **Cold storage:** sign on an offline machine with `parallax-wallet signtx`,
   which never talks to a node, and carry the signed transaction across. See
-  [parallax-wallet](/v2.1.x/parallax-client/tools/parallax-wallet#cold-sign-a-transaction-on-an-air-gapped-machine).
+  [parallax-wallet](/client/tools/parallax-wallet#cold-sign-a-transaction-on-an-air-gapped-machine).
 - **Clef** is also available as an external signer with rule-based
-  approval; see [Clef](/v2.1.x/parallax-client/tools/clef/introduction).
+  approval; see [Clef](/client/tools/clef/introduction).
 
 Keep in the hot wallet only what a day or so of withdrawals needs, and
 refill it from cold storage.
@@ -163,7 +163,7 @@ Track each withdrawal until it is buried, the same way you track deposits:
    returns a receipt, the transaction is in a block. Check `status` is
    `0x1`. A failed withdrawal still uses its nonce and pays its fee.
 2. Record the block number and hash, and count confirmations as for
-   [deposits](./deposits#tracking-confirmations).
+   [deposits](/exchange-integration/deposits#tracking-confirmations).
 3. If a reorganization removes the block, the transaction normally goes
    back into nodes' pools and is mined again. If it has not reappeared after
    a few blocks, **rebroadcast the same signed transaction**. It has the

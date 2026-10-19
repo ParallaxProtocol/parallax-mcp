@@ -3,38 +3,44 @@
 #
 #   scripts/sync-content.sh [REF]
 #
-# Docs come from the Parallax repository at REF (default: main, the branch
-# docs.parallaxprotocol.org is published from), read with git archive so the
-# branch checked out in that clone does not matter and pages that exist only
-# on development branches never ship.
+# Docs come from the parallax-docs repository at REF (default: main, the
+# branch docs.parallaxprotocol.org is published from), read with git archive
+# so the branch checked out in that clone does not matter and pages that
+# exist only on development branches never ship. Every section is embedded
+# except the archived client majors (client/v*.x/): client/ is the current
+# client.
 # PIP-0002..0005 live in GitHub Discussions and are fetched with the gh CLI;
-# PIP-0006 is the networking page of the v2.0.x docs.
+# PIP-0006 is the networking page of the v2.0.x docs, which v2.1 renamed, read
+# from the commit that imported the docs into parallax-docs.
 #
-# Environment: PARALLAX_REPO (default ../parallax), DOCS_VERSION (default
-# v2.1.x), GH_REPO (default ParallaxProtocol/parallax).
+# Environment: DOCS_REPO (default ../parallax-docs), GH_REPO (default
+# ParallaxProtocol/parallax, whose Discussions hold the PIPs).
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")/.." && pwd)
-repo=${PARALLAX_REPO:-$here/../parallax}
-version=${DOCS_VERSION:-v2.1.x}
+repo=${DOCS_REPO:-$here/../parallax-docs}
 gh_repo=${GH_REPO:-ParallaxProtocol/parallax}
+docs_github=github.com/ParallaxProtocol/parallax-docs
+sections="protocol client hashwarp guides exchange-integration"
+pip6_commit=d8f39d1e3d36e979b6aa8d8ef20eaaa0f2217f49
 ref=${1:-main}
 out=$here/pkg/resources/content
 
 commit=$(git -C "$repo" rev-parse "$ref^{commit}")
-echo "docs: $repo @ $ref ($commit), docs/$version"
+echo "docs: $repo @ $ref ($commit)"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 rm -rf "$out/docs" "$out/pips"
 mkdir -p "$out/docs" "$out/pips"
-git -C "$repo" archive "$ref" "docs/$version" "docs/v2.0.x/parallax-protocol/advanced/networking/pip-0006.mdx" | tar -x -C "$tmp"
-(cd "$tmp/docs/$version" && find . -name '*.mdx' -print0 | while IFS= read -r -d '' f; do
+# shellcheck disable=SC2086 # sections is a word list
+git -C "$repo" archive "$ref" $sections | tar -x -C "$tmp"
+(cd "$tmp" && find . -name '*.mdx' -not -path './client/v*.x/*' -print0 | while IFS= read -r -d '' f; do
 	mkdir -p "$out/docs/$(dirname "$f")"
 	cp "$f" "$out/docs/$f"
 done)
-cp "$tmp/docs/v2.0.x/parallax-protocol/advanced/networking/pip-0006.mdx" "$out/pips/pip-0006.md"
+git -C "$repo" show "$pip6_commit:v2.0.x/parallax-protocol/advanced/networking/pip-0006.mdx" >"$out/pips/pip-0006.md"
 
 fetched=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 gh api graphql -F owner="${gh_repo%/*}" -F name="${gh_repo#*/}" -f query='
@@ -53,7 +59,7 @@ while IFS= read -r d; do
 	echo "pip: PIP-$id from $(jq -r .url <<<"$d")"
 done
 
-jq -n --arg ref "$ref" --arg commit "$commit" --arg version "$version" --arg fetched "$fetched" --arg gh "$gh_repo" \
-	'{docs: {repository: "github.com/\($gh)", ref: $ref, commit: $commit, version: $version}, pips: {discussions: "https://github.com/\($gh)/discussions", fetched: $fetched}}' \
+jq -n --arg ref "$ref" --arg commit "$commit" --arg docs "$docs_github" --arg fetched "$fetched" --arg gh "$gh_repo" \
+	'{docs: {repository: $docs, ref: $ref, commit: $commit}, pips: {discussions: "https://github.com/\($gh)/discussions", fetched: $fetched}}' \
 	>"$out/SOURCE.json"
 echo "docs: $(find "$out/docs" -name '*.mdx' | wc -l) pages; pips: $(ls "$out/pips" | wc -l)"

@@ -47,17 +47,19 @@ jobs:
           fetch-depth: 0
       # Embed the current docs and PIPs rather than the snapshot committed
       # here, so a release never ships documentation older than the site.
+      # Full history: PIP-0006 is read from an old commit of the docs
       - uses: actions/checkout@v4
         with:
-          repository: ParallaxProtocol/parallax
+          repository: ParallaxProtocol/parallax-docs
           ref: main
-          path: .parallax
+          path: .parallax-docs
+          fetch-depth: 0
       - name: Refresh the embedded docs and PIPs
         env:
           GH_TOKEN: ${{ github.token }}
-          PARALLAX_REPO: .parallax
+          DOCS_REPO: .parallax-docs
         run: |
-          git -C .parallax checkout -q -B main
+          git -C .parallax-docs checkout -q -B main
           scripts/sync-content.sh main
           git status --short pkg/resources/content | head -20
       - uses: docker/setup-qemu-action@v3

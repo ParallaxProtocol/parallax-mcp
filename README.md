@@ -119,7 +119,7 @@ traces at old blocks) needs `--gcmode archive`.
 |---|---|
 | `parallax://chain/parameters` | Chain ID, block time, PoW and ASERT, reward schedule and cap, coinbase maturity, EVM level (Berlin) and transaction types, endpoints |
 | `parallax://glossary` | Parallax and proof-of-work terms used by the tools |
-| `parallax://docs`, `parallax://docs/{path}` | The documentation of [docs.parallaxprotocol.org](https://docs.parallaxprotocol.org) (v2.1.x) |
+| `parallax://docs`, `parallax://docs/{path}` | The documentation of [docs.parallaxprotocol.org](https://docs.parallaxprotocol.org) |
 | `parallax://pips`, `parallax://pips/pip-000N` | PIP-0002 to PIP-0006 |
 | `parallax://chain/head` | The latest block; **subscribable**: a `resources/updated` notification on every new block (and reorg) |
 | `parallax://network/alerts` | The status page's active alerts; **subscribable**: a notification when one appears, clears or changes level |
