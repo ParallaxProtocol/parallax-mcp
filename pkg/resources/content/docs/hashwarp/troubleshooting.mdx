@@ -1,12 +1,30 @@
 ---
-title: "Troubleshooting Hashwarp on Windows"
-sidebarTitle: "Windows Troubleshooting"
-description: "What to do when Hashwarp finds no GPU on Windows."
+title: "Troubleshooting"
+sidebarTitle: "Troubleshooting"
+description: "Common Hashwarp problems and what to do about them, and what to do when Hashwarp finds no GPU on Windows."
 ---
 
-# Troubleshooting Hashwarp on Windows
+## Common problems
 
-> What to do when Hashwarp finds no GPU on Windows.
+| Problem | What to do |
+| ------- | ---------- |
+| `No usable mining devices found` | Hashwarp found no GPU it can mine with: see [No GPU found on Windows](#no-gpu-found-on-windows) below. On Linux, install the NVIDIA driver (525 or newer) or AMD's driver with OpenCL (ROCm) |
+| `Wrong result, lower the overclock if it happens often` | Lower the memory overclock of that GPU, then check it with `hashwarp --selftest` |
+| Rejected shares with a `low difficulty` reason | The pool may need another Stratum flavour: try `--esm` (see [Pool Mining](/hashwarp/pool-mining#stratum-flavours)) |
+| The pool keeps disconnecting | Check the pool's address and port, and `--tls` for a TLS port. `--log-debug json` shows the messages exchanged with the pool |
+| `Epoch N needs ...` and the GPU paused | The GPU doesn't have enough free memory for the DAG. Close other programs using the GPU |
+| The hashrate drops to 0 and the GPU shows `paused` | A temperature limit was reached: see the warning above it, and [Safety](/hashwarp/safety#temperatures) |
+| The hashrate swings a lot | Something else uses the GPU: a desktop, a browser, a video. Mine on GPUs without a display where you can |
+| `--mem-temp-stop has no effect` | The GPU reports no memory or hotspot temperature: see [Safety](/hashwarp/safety#temperatures) |
+| Overclocking says `needs root` | Run Hashwarp with `sudo` on Linux, or as administrator on Windows |
+| `Rusticl warning` or `pci id for fd` lines at start (Linux) | Printed by Mesa's OpenCL driver, harmless. On NVIDIA-only rigs mine with `--cuda`, or set `OCL_ICD_VENDORS` to the vendor's `.icd` file (e.g. `nvidia.icd`) |
+| TLS pools fail with a certificate error | Install your distribution's CA certificates (`ca-certificates`), or set `SSL_CERT_FILE` to a CA bundle |
+
+When asking for help, run `hashwarp --list-devices` and include its output, your command line or configuration (without your address if you prefer), and the lines around the problem from the log (`--log-file hashwarp.log`).
+
+---
+
+## No GPU found on Windows
 
 If Hashwarp stops at start with:
 
@@ -18,7 +36,7 @@ it found no GPU it can mine with. Run `hashwarp --list-devices` to see which GPU
 
 ---
 
-## NVIDIA GPUs
+### NVIDIA GPUs
 
 Hashwarp mines on NVIDIA GPUs with **CUDA**, which needs only the NVIDIA driver:
 
@@ -33,7 +51,7 @@ If the driver is too old, Hashwarp says so when it starts: `The NVIDIA driver su
 
 ---
 
-## AMD GPUs
+### AMD GPUs
 
 Hashwarp mines on AMD GPUs with **OpenCL**. The AMD driver (Adrenalin) installs the OpenCL runtime (`amdocl64.dll`) and registers it so programs can find it. When Hashwarp doesn't find an AMD GPU, the driver install is usually damaged:
 
@@ -45,9 +63,9 @@ If the GPU is still missing, the OpenCL runtime may not be registered. You can r
 
 ---
 
-## Registering the OpenCL runtime by hand (advanced)
+### Registering the OpenCL runtime by hand (advanced)
 
-### Step 1 — Locate the OpenCL DLL
+#### Step 1 — Locate the OpenCL DLL
 
 Run **PowerShell as Administrator**, then execute:
 
@@ -65,7 +83,7 @@ Note the full path: you'll need it in Step 3. If the file isn't there, the drive
 
 ---
 
-### Step 2 — Check if the registry key is missing
+#### Step 2 — Check if the registry key is missing
 
 Still in PowerShell, run:
 
@@ -77,7 +95,7 @@ If the output doesn't list the path from Step 1, or you see **"Cannot find path"
 
 ---
 
-### Step 3 — Register the OpenCL runtime
+#### Step 3 — Register the OpenCL runtime
 
 Run the following in **Administrator PowerShell**, with the path from Step 1:
 
@@ -97,7 +115,7 @@ Then **reboot your PC**.
 
 ---
 
-### Step 4 — Verify after reboot
+#### Step 4 — Verify after reboot
 
 ```powershell  theme={null}
 reg query "HKLM\SOFTWARE\Khronos\OpenCL\Vendors"
@@ -107,7 +125,7 @@ The output should list the path of `amdocl64.dll` with the value `0x0`.
 
 ---
 
-## Final Check
+### Final check
 
 Now you can run Hashwarp again:
 

@@ -1,0 +1,100 @@
+---
+title: "GPUs & Tuning"
+sidebarTitle: "GPUs & Tuning"
+description: "Choose the GPUs Hashwarp mines on, check them, benchmark them and tune their kernels."
+---
+
+Hashwarp finds your GPUs at start and mines on all of them, NVIDIA GPUs with CUDA and the others with OpenCL. Its defaults suit most GPUs: start with [overclocking](/hashwarp/overclocking), which matters much more for XHash than the kernel settings below.
+
+---
+
+## Listing the GPUs
+
+```bash
+hashwarp --list-devices
+```
+
+```
+Id  Pci Id    Backend Name                                Memory  Details
+--  ------    ------- ----                                ------  -------
+0   01:00.0   cu,cl   NVIDIA GeForce RTX 4090           23.59 GB  SM 8.9, NVIDIA CUDA OpenCL 3.0 CUDA
+```
+
+`Id` is the number the other options use for a GPU, and `Backend` what Hashwarp can mine on it with: `cu` (CUDA) and `cl` (OpenCL). The log names each GPU by that number: `gpu0`, `gpu1` ...
+
+---
+
+## Choosing GPUs
+
+| Option | Meaning |
+| ------ | ------- |
+| `--gpu-id 0,2` | Mine on these GPUs only |
+| `--backend` | `auto` (CUDA on NVIDIA GPUs, OpenCL on the others), `cuda` or `opencl`. `-U` and `-G` are shortcuts for `cuda` and `opencl` |
+| `--disable-gpu-nvidia`, `--disable-gpu-amd`, `--disable-gpu-intel` | Skip the GPUs of a vendor |
+
+While mining, press a GPU's number (`0` to `9`) to pause or resume it, or `p` and `r` for all of them.
+
+---
+
+## GPU memory
+
+Each GPU holds the XHash DAG, which grows by 8 MB every epoch (720 blocks, about 5 days): around 1.7 GB in late 2026, 2 GB around mid 2027. Hashwarp builds it on the GPU when mining starts and at each new epoch, which takes under a second on recent GPUs:
+
+```
+06:20:34  INFO  gpu0   DAG epoch 84 (1.66 GB) built in 403 ms · 19.54 GB free
+```
+
+A GPU without enough free memory is paused until the next epoch with a warning (`Epoch N needs ...`). On rigs whose CPU or power supply struggles when every GPU builds its DAG at once, `--dag-load-mode 1` builds them one after the other.
+
+---
+
+## Checking the GPUs: --selftest
+
+```bash
+hashwarp --selftest
+```
+
+The self-test mines offline for up to 30 seconds (`--selftest 60` for longer), checks every result on the CPU and ends with a verdict per GPU:
+
+```
+06:48:44  INFO  gpu0   ✔ PASS NVIDIA GeForce RTX 4090 · 35 solutions verified · 82.14 MH/s
+```
+
+It exits with code 0 when every GPU passes and 1 otherwise, so scripts can use it. Run it after installing Hashwarp, updating drivers or changing an overclock. Its hashrate includes the start, so it reads lower than while mining.
+
+While mining, Hashwarp checks every solution on the CPU before sending it too. A wrong one isn't submitted: it counts as `F` (failed) in the share counts and is logged as `Wrong result, lower the overclock if it happens often`. `--noeval` turns the check off, which isn't recommended.
+
+---
+
+## Benchmarking
+
+```bash
+hashwarp --benchmark 60500
+```
+
+mines offline on the DAG of block 60500 and prints the hashrate as when mining, without a pool. Stop it with `q` or Ctrl+C; it prints the highest and mean hashrate. Use a current block number, so the DAG has its current size.
+
+---
+
+## Kernel tuning
+
+These take [one value per GPU](/hashwarp/configuration#lists-per-gpu), or one for all. The defaults are right for most GPUs; change one at a time, and compare with `--benchmark`.
+
+| Option | Default | Meaning |
+| ------ | ------- | ------- |
+| `--cuda-kernel` | `auto` | CUDA search kernel. `0` is best when memory bandwidth limits the hashrate (nearly every GPU), `1` when compute does. `auto` times both on each GPU at start and keeps the faster |
+| `--cuda-grid-size` | 8192 | CUDA blocks per kernel launch |
+| `--cuda-block-size` | 128 | CUDA threads per block: 32, 64, 128 or 256 |
+| `--cuda-streams` | 2 | CUDA kernels in flight |
+| `--cuda-schedule` | `sync` | How the CPU waits for CUDA (all GPUs): `spin` lowers the latency a little at the cost of a CPU core per GPU |
+| `--cl-global-work` | 65536 | OpenCL global work size multiplier |
+| `--cl-local-work` | 128 | OpenCL work group size: 64, 128 or 256 |
+| `--cl-noexit` | off | OpenCL: don't use the fast exit kernel (all GPUs) |
+
+At start Hashwarp logs which CUDA kernel it chose, with both kernels' hashrates:
+
+```
+06:20:36  INFO  gpu0   Kernel standard (standard 115.05 MH/s, dedup 112.26 MH/s)
+```
+
+On an RTX 4090 at stock clocks Hashwarp mines at 115.5 MH/s, about 94% of the GPU's memory bandwidth: XHash reads 8 KB of the DAG per hash, so memory bandwidth limits it on nearly every GPU. That is why the memory clock matters most: see [Overclocking](/hashwarp/overclocking).

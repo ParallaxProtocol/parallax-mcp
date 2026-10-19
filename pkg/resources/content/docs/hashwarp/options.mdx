@@ -1,0 +1,132 @@
+---
+title: "Option Reference"
+sidebarTitle: "All Options"
+description: "Every Hashwarp command line option and configuration key, with its values and default."
+---
+
+Every option of Hashwarp 2.0, as `hashwarp --help-all` lists them. In the [configuration file](/hashwarp/configuration#the-configuration-file) the key is the long name without the dashes: `--temp-stop 85` is `"temp-stop": [85]`.
+
+- **Value**: what the option takes. A **comma separated list** takes several values: `--pool a.example.com:3333,b.example.com:3333`. Tuning, temperature and overclocking lists hold [one value per GPU](/hashwarp/configuration#lists-per-gpu), or one for all.
+- Options without a value are flags: give them to turn the feature on.
+- Several names on one row are the same option. The second ones are the names of Hashwarp 1.x and ethminer, kept so that older command lines keep working.
+
+## Pool
+
+| Option | Value | Default | Description |
+| ------ | ----- | ------- | ----------- |
+| `-o`<br />`-P`<br />`--pool` | text, comma separated list |  | Pool as host:port or URL (stratum+tcp://, stratum+ssl://, http:// for getwork). Repeat or comma separate for failover pools |
+| `-u`<br />`--wallet` | text (or `HASHWARP_WALLET`) |  | Your Parallax address (0x...) |
+| `-w`<br />`--worker` | text |  | Worker (rig) name shown by the pool |
+| `-p`<br />`--password` | text | `x` | Pool password |
+| `--tls` |  |  | Use TLS for pools given as host:port |
+| `--esm` | `auto`, `0`, `1`, `2`, `3` | `auto` | Stratum flavour: auto, 0 = EthProxy, 1/2 = EthereumStratum/1.0.0 (NiceHash), 3 = EthereumStratum/2.0.0 |
+| `--solo` | text |  | Solo mine on a Parallax node (default http://127.0.0.1:8545; ws://host:8546 to have the node push new work). Rewards go to the node's --miner.coinbase |
+| `-R`<br />`--report-hashrate`<br />`--report-hr` |  |  | Report the hashrate to the pool or node |
+| `--pool-retries`<br />`--farm-retries` | number, 0 to 99999 | `3` | Connection attempts before switching to the next pool (a single pool is retried forever) |
+| `--retry-delay` | number, 1 to 999 | `5` | Seconds before reconnecting, doubles on each failed attempt (up to 120) |
+| `--no-pool-check` |  |  | Don't warn when the pool finds most of the network's blocks (hashwarp reads the pools' shares from status.parallaxprotocol.org every 10 minutes) |
+| `--failover-timeout` | number, 0 to 999 | `0` | Minutes on a failover pool before trying the first one again (0 = never) |
+| `--work-timeout` | number, 600 to 99999 | `7200` | Reconnect if no new work arrives for this many seconds |
+| `--response-timeout` | number, 2 to 999 | `2` | Reconnect if the pool doesn't answer within this many seconds |
+| `--getwork-interval`<br />`--farm-recheck` | number, 100 to 99999 | `1000` | Milliseconds between getwork polls (solo / http pools) |
+
+## Devices
+
+| Option | Value | Default | Description |
+| ------ | ----- | ------- | ----------- |
+| `--list-devices` |  |  | List the GPUs and exit |
+| `--backend` | `auto`, `cuda`, `opencl` | `auto` | auto (CUDA on NVIDIA, OpenCL on the others), cuda or opencl |
+| `-U`<br />`--cuda` |  |  | Same as --backend cuda |
+| `-G`<br />`--opencl` |  |  | Same as --backend opencl |
+| `--gpu-id`<br />`--devices` | numbers, comma separated |  | GPUs to mine on, as listed by --list-devices (default: all) |
+| `--disable-gpu-nvidia` |  |  | Don't mine on NVIDIA GPUs |
+| `--disable-gpu-amd` |  |  | Don't mine on AMD GPUs |
+| `--disable-gpu-intel` |  |  | Don't mine on Intel GPUs |
+
+## Tuning
+
+Per GPU lists: one value per GPU, or one for all.
+
+| Option | Value | Default | Description |
+| ------ | ----- | ------- | ----------- |
+| `--cuda-grid-size`<br />`--cu-grid-size` | numbers, comma separated |  | CUDA grid size [1 .. 131072] (default 8192) |
+| `--cuda-block-size`<br />`--cu-block-size` | numbers, comma separated |  | CUDA block size: 32, 64, 128 or 256 (default 128) |
+| `--cuda-streams`<br />`--cu-streams` | numbers, comma separated |  | CUDA streams [1 .. 99] (default 2) |
+| `--cuda-schedule`<br />`--cu-schedule` | `auto`, `spin`, `yield`, `sync` | `sync` | How the CPU waits for CUDA kernels: auto, spin, yield or sync (all GPUs) |
+| `--cuda-kernel` | `auto`, `0`, `1` | `auto` | CUDA search kernel: auto (time both on each GPU at start), 0 (best when memory bandwidth limits the hashrate) or 1 (best when compute does) |
+| `--cl-global-work` | numbers, comma separated |  | OpenCL global work size multiplier (default 65536) |
+| `--cl-local-work` | numbers, comma separated |  | OpenCL work group size: 64, 128 or 256 (default 128) |
+| `--cl-noexit` |  |  | OpenCL: don't use the fast exit kernel (all GPUs) |
+| `-L`<br />`--dag-load-mode` | number, 0 to 1 | `0` | 0 = build DAGs on all GPUs at once, 1 = one GPU after the other |
+| `--noeval` |  |  | Submit solutions without checking them on the CPU first (not recommended) |
+| `--ergodicity` | number, 0 to 2 | `0` | Pick a new random nonce range 0 = once, 1 = per connection, 2 = per job |
+
+## Hardware
+
+| Option | Value | Default | Description |
+| ------ | ----- | ------- | ----------- |
+| `--no-hwmon` |  |  | Don't read temperatures, fans and power |
+| `--temp-stop`<br />`--tstop` | numbers, comma separated |  | Pause a GPU at this core temperature in C [30 .. 100] (default off) |
+| `--temp-resume`<br />`--tstart` | numbers, comma separated |  | Resume a GPU paused by --temp-stop at this temperature (default stop - 15) |
+| `--mem-temp-stop` | numbers, comma separated |  | Pause a GPU at this memory temperature in C (hotspot on GPUs without memory sensor) [40 .. 120] (default off) |
+| `--mem-temp-resume` | numbers, comma separated |  | Resume a GPU paused by --mem-temp-stop at this temperature (default stop - 10) |
+| `--shutdown-temp` | number, 0 to 125 | `0` | Stop hashwarp (exit code 6) if any GPU temperature reaches this in C (default off) |
+| `--watchdog-timeout` | number, 0 to 3600 | `120` | Seconds a GPU may give no sign of life before hashwarp exits (code 5) so it can be restarted (0 = no watchdog) |
+| `--watchdog-restarts` | number, 0 to 100 | `3` | Times per hour a failed GPU is restarted before hashwarp exits (code 5) |
+| `--watchdog-script` | text |  | Run this program (with the GPU index and the reason) when the watchdog gives up, e.g. to reboot the rig |
+
+## Overclocking
+
+Per GPU lists, x leaves a GPU alone; needs root or administrator rights.
+
+| Option | Value | Default | Description |
+| ------ | ----- | ------- | ----------- |
+| `--oc-profile` | text, comma separated list |  | Overclocking profile: stock, efficient (the tuned core clock, or 80% power), tuned (the --oc-tune results) or one of oc-profiles in the configuration file |
+| `--oc-core-clock` | text, comma separated list |  | Core clock in MHz: locked on NVIDIA, highest state on AMD (0 = default) |
+| `--oc-core-offset` | text, comma separated list |  | Core clock offset in MHz (NVIDIA) |
+| `--oc-mem-offset` | text, comma separated list |  | Memory clock offset in MHz (NVIDIA), in the units of nvidia-settings and HiveOS: twice MSI Afterburner's |
+| `--oc-mem-clock` | text, comma separated list |  | Memory clock in MHz of the highest state (AMD, 0 = default) |
+| `--oc-power` | text, comma separated list |  | Power limit in W, or in percent of the default (75%) |
+| `--oc-fan` | text, comma separated list |  | Fan speed in percent, or auto |
+| `--oc-profiles` | text |  | Named overclocking profiles, a JSON object (the oc-profiles object of the configuration file) |
+| `--oc-tune`<br />`--oc-tune=core` |  | `all` | Find the best memory clock and the most efficient core clock of each GPU, save them for --oc-profile tuned and exit. --oc-tune=core only tunes the core clock, which is safe |
+| `--oc-reset` |  |  | Set the stock clocks, power limits and fan control of the GPUs and exit, e.g. after hashwarp was killed while overclocking |
+| `--oc-tune-file` | text |  | Tuning results (default hashwarp-oc.json next to the configuration file) |
+
+## Logging and display
+
+| Option | Value | Default | Description |
+| ------ | ----- | ------- | ----------- |
+| `--log-file` | text |  | Also write the log to this file |
+| `--log-max-size` | number | `20` | Rotate the log file when it reaches this many MB (0 = never) |
+| `--log-keep` | number, 0 to 99 | `3` | Rotated log files to keep |
+| `--log-level` | `error`, `warn`, `info`, `debug`, `trace` | `info` | error, warn, info, debug or trace |
+| `--log-format` | `text`, `json` | `text` | text, or json: one JSON object per line, on the console and in the log file |
+| `--log-debug` | `json`, `per-gpu`, `connect`, `switch`, `submit`, `flow`, comma separated list |  | Extra debug output (implies --log-level debug): json, per-gpu, connect, switch, submit, flow |
+| `--no-color`<br />`--nocolor` |  |  | Don't use colors |
+| `--syslog` |  |  | Log without timestamps and colors (for syslog) |
+| `--stdout` |  |  | Log to stdout instead of stderr |
+| `--display-interval` | number, 1 to 1800 | `10` | Seconds between hashrate lines |
+| `--no-hotkeys` |  |  | Don't read keys from the terminal (h for help) |
+| `--stats-interval` | number, 0 to 86400 | `60` | Seconds between per GPU statistics tables (0 = never) |
+
+## API
+
+| Option | Value | Default | Description |
+| ------ | ----- | ------- | ----------- |
+| `--api-bind` | text |  | Serve the API on address:port, e.g. 127.0.0.1:21550 (default off) |
+| `--api-token`<br />`--api-password` | text |  | Secret required by the API (required to allow control on non loopback addresses) |
+| `--api-allow-control` |  |  | Allow API clients to pause, restart and change pools |
+| `--rig` | text, comma separated list |  | Show another rig on the dashboard: [name=][token@]host[:port] (port 21550 by default). Repeat it, or separate rigs with commas |
+| `--monitor` |  |  | Don't mine: only serve the dashboard of the --rig rigs (needs --api-bind) |
+
+## Other
+
+| Option | Value | Default | Description |
+| ------ | ----- | ------- | ----------- |
+| `-c`<br />`--config` |  |  | Read options from a JSON file (keys are option names) |
+| `--save-config` | text |  | Write the options given to this JSON file and exit |
+| `-M`<br />`-Z`<br />`--benchmark`<br />`--simulation` | number |  | Benchmark offline on the DAG of this block number |
+| `--selftest` | number | `30` | Check every GPU's results on the CPU offline for up to this many seconds (default 30) and exit with 0 if all are correct |
+| `--exit` |  |  | Exit when a GPU fails instead of carrying on |
+

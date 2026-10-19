@@ -4,7 +4,7 @@ sidebarTitle: "Getting Started"
 description: "How to mine Parallax with your GPU using Hashwarp, the official XHash miner."
 ---
 
-[Hashwarp](https://github.com/ParallaxProtocol/hashwarp) is the official GPU miner for Parallax's [XHash](/protocol/foundational-topics/consensus/algorithms/xhash) Proof-of-Work. It mines on **NVIDIA** GPUs (CUDA) and **AMD** and other GPUs (OpenCL), on a mining pool or solo on your own node.
+[Hashwarp](https://github.com/ParallaxProtocol/hashwarp) is the official GPU miner for Parallax's [XHash](/protocol/foundational-topics/consensus/algorithms/xhash) Proof-of-Work. It mines on **NVIDIA** GPUs (CUDA) and **AMD** and other GPUs (OpenCL), on a mining pool or solo on your own node. It has no dev fee.
 
 Besides mining, Hashwarp:
 
@@ -29,7 +29,9 @@ Besides mining, Hashwarp:
 
 <Steps>
   <Step title="Download Hashwarp">
-    Download the archive for your operating system from the [Hashwarp releases](https://github.com/ParallaxProtocol/hashwarp/releases) and extract it.
+    Download the archive for your operating system from the [Hashwarp releases](https://github.com/ParallaxProtocol/hashwarp/releases) and extract it. It holds the `hashwarp` executable, a sample configuration (`hashwarp.json.example`) and start scripts.
+
+    On HiveOS or mmpOS, use the ready-made package instead: see [HiveOS & mmpOS](/hashwarp/rig-os).
   </Step>
 
   <Step title="Start it">
@@ -41,7 +43,7 @@ Besides mining, Hashwarp:
     hashwarp --pool <POOL_HOST>:<PORT> --wallet <YOUR_ADDRESS> --worker rig1
     ```
 
-    Replace `<POOL_HOST>:<PORT>` with the pool's address and `<YOUR_ADDRESS>` with your Parallax address. The worker name tells your rigs apart on the pool's dashboard. See [Mining on a Pool](/hashwarp/pool-mining) to choose a pool.
+    Replace `<POOL_HOST>:<PORT>` with the pool's address and `<YOUR_ADDRESS>` with your Parallax address. The worker name tells your rigs apart on the pool's dashboard. See [Mining on a Pool](/hashwarp/pool-mining) to choose a pool, or [Solo Mining](/hashwarp/solo-mining) to mine on your own node.
   </Step>
 
   <Step title="Check that it mines">
@@ -52,59 +54,29 @@ Besides mining, Hashwarp:
     05:57:20  INFO  miner  115.42 MH/s · 60s 115.43 · 15m 116.18 · eff 133.62 · A20 R1 · 71°C · fan 53% · 377 W · 306 kH/J
     ```
 
-    The line shows the current hashrate and its 1 and 15 minute averages, the effective hashrate (what the pool credits you), the accepted (`A`) and rejected (`R`) shares, then the temperature, fan, power and efficiency. Press `s` for a table per GPU, or `h` for the other keys.
+    The line shows the current hashrate and its 1 and 15 minute averages, the effective hashrate (what the pool credits you), the accepted (`A`) and rejected (`R`) shares, then the temperature, fan, power and efficiency. Press `s` for a table per GPU, or `h` for the other keys. [Output & Logs](/hashwarp/output-and-logs) explains every part.
   </Step>
 </Steps>
 
----
-
-## Solo mining
-
-To mine solo, start your Parallax client with mining enabled. The block rewards go to its `--miner.coinbase` address:
-
-```bash
-./parallaxd --http --http.api "eth,net,web3,miner" --mine --miner.coinbase <YOUR_ADDRESS>
-```
-
-Then point Hashwarp to it:
-
-```bash
-hashwarp --solo                            # node on this computer, http://127.0.0.1:8545
-hashwarp --solo http://192.168.1.10:8545   # node on another computer
-```
-
-Hashwarp asks the node for new work every second. Over the node's WebSocket (`--ws --ws.api "eth,net,web3,miner"` on the client), use `hashwarp --solo ws://127.0.0.1:8546` instead; a client that supports it then pushes each new block's work to Hashwarp the moment it has it.
-
-<Warning>
-  Keep the client's HTTP and WebSocket ports on your local network: anyone who can reach them can submit work to your node.
-</Warning>
-
-Each block found is logged as `★ BLOCK FOUND` with its height. Block rewards are credited once the block has 100 blocks on top of it. You can check your balance with:
-
-```bash
-./parallaxd attach --exec "eth.getBalance('<YOUR_ADDRESS>')"
-```
+<Tip>
+  Run `hashwarp --selftest` once after installing, and after changing drivers or overclocking: it mines offline for up to 30 seconds, checks every GPU's results on the CPU and says PASS or FAIL for each GPU.
+</Tip>
 
 ---
 
-## Monitoring
+## Next steps
 
-`--api-bind 127.0.0.1:21550` serves a dashboard on `http://127.0.0.1:21550` with the hashrate, shares, temperatures, power and efficiency of each GPU. With `--rig rig2=192.168.1.12 --rig rig3=192.168.1.13` it shows your other rigs too, and `hashwarp --monitor` serves that view without mining. The same data is available as JSON and as Prometheus metrics; see the [API documentation](https://github.com/ParallaxProtocol/hashwarp/blob/main/docs/API.md).
-
----
-
-## Overclocking
-
-Hashwarp can set the memory and core clocks, power limit and fans of each GPU (NVIDIA, and AMD on Linux), and puts them back when it exits. It needs administrator rights (`sudo` on Linux).
-
-`hashwarp --oc-tune` finds, for each GPU, the memory clock with the highest hashrate and the lowest core clock that keeps it, which saves power. It mines offline for 10 to 20 minutes and saves the results; then mine with `--oc-profile tuned`. See [Overclocking](https://github.com/ParallaxProtocol/hashwarp/blob/main/docs/MINING.md#overclocking) for profiles and the individual settings.
-
----
-
-## Tips & Troubleshooting
-
-- `hashwarp --list-devices` lists the GPUs Hashwarp found, and `hashwarp --selftest` checks that each one computes correct results.
-- If your pool finds most of the network's blocks, Hashwarp says so at startup and every hour, with smaller pools to move to. A pool with the majority can reverse payments; please spread your hashrate.
-- If Hashwarp reports **wrong results** for a GPU, lower its overclock.
-- On Windows, if no GPU is found, see [Windows Troubleshooting](/hashwarp/troubleshooting).
-- `hashwarp --help` lists every option, and the [Hashwarp documentation](https://github.com/ParallaxProtocol/hashwarp/blob/main/docs/MINING.md) covers them in detail.
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="sliders" href="/hashwarp/configuration">
+    The configuration file, the wizard and how options combine.
+  </Card>
+  <Card title="Overclocking" icon="gauge-high" href="/hashwarp/overclocking">
+    Clocks, power and fans per GPU, and `--oc-tune` to find the best settings.
+  </Card>
+  <Card title="Dashboard" icon="chart-line" href="/hashwarp/dashboard">
+    A web dashboard of this rig, or of all your rigs.
+  </Card>
+  <Card title="Safety" icon="shield-halved" href="/hashwarp/safety">
+    Temperature limits, the watchdog and exit codes.
+  </Card>
+</CardGroup>

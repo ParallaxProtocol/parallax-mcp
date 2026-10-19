@@ -43,3 +43,9 @@ The pruning could take 4-5 hours to complete. Once finished, restart the Paralla
 ## Troubleshooting
 
 Messages about "state snapshot generation" indicate that a snapshot is not fully generated. This suggests either the `--datadir` is not correct or the Parallax client ran out of time to complete the snapshot generation and the pruning began before the snapshot was completed. In either case, the best course of action is to stop the client, run it normally again (no pruning) until the snapshot is definitely complete and at least 128 blocks exist on top of it, then try pruning again.
+
+{/* third-party attribution */}
+
+---
+
+_Adapted from [Database Pruning](https://geth.ethereum.org/docs/fundamentals/dbpruning) in the go-ethereum documentation, © The go-ethereum Authors. See the [third-party notices](https://github.com/ParallaxProtocol/parallax-docs/blob/main/THIRD_PARTY_NOTICES.md)._

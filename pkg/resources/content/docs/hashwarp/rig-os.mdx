@@ -1,0 +1,80 @@
+---
+title: "HiveOS & mmpOS"
+sidebarTitle: "HiveOS & mmpOS"
+description: "Mine with Hashwarp on HiveOS and mmpOS, with the ready-made packages."
+---
+
+Each Hashwarp release has a package for HiveOS and one for mmpOS, on the [releases page](https://github.com/ParallaxProtocol/hashwarp/releases):
+
+| Rig OS | Package |
+| ------ | ------- |
+| HiveOS | `hashwarp-<version>.tar.gz`, labeled "HiveOS package" |
+| mmpOS | `hashwarp-<version>-mmpos.tgz`, labeled "mmpOS package" |
+
+Both report the hashrate, shares, temperatures and fans to the rig OS through Hashwarp's API, which they keep on `127.0.0.1`. Both restart Hashwarp when it exits, which the [watchdog](/hashwarp/safety#the-watchdog) relies on.
+
+<Note>
+  Set the overclock in the rig OS, as for any miner. Hashwarp's own [overclocking](/hashwarp/overclocking) options aren't needed there.
+</Note>
+
+---
+
+## HiveOS
+
+<Steps>
+  <Step title="Copy the package's link">
+    On the [releases page](https://github.com/ParallaxProtocol/hashwarp/releases), copy the link of `hashwarp-<version>.tar.gz`, for example:
+
+    ```
+    https://github.com/ParallaxProtocol/hashwarp/releases/download/v2.0.0/hashwarp-2.0.0.tar.gz
+    ```
+
+    HiveOS reads the miner's name and version from this file name, so use it as it is.
+  </Step>
+
+  <Step title="Create a flight sheet">
+    In HiveOS, create a flight sheet with your Parallax wallet, choose **Custom** as the miner, and open its **Setup Miner Config**:
+
+    | Field | Value |
+    | ----- | ----- |
+    | Miner name | `hashwarp` (filled in from the link) |
+    | Installation URL | The link from the previous step |
+    | Hash algorithm | `xhash` |
+    | Wallet and worker template | `%WAL%.%WORKER_NAME%` |
+    | Pool URL | The pool's `host:port`, for example `pool.example.com:3333`. Several pools separated by spaces are failover pools |
+    | Pass | The pool password, if it needs one |
+    | Extra config arguments | Any Hashwarp options, for example `--tls --temp-stop 85` |
+  </Step>
+
+  <Step title="Apply it to your rigs">
+    Apply the flight sheet. HiveOS downloads Hashwarp, starts it, and shows its hashrate and statistics on the rig's page. The miner log shows Hashwarp's output.
+  </Step>
+</Steps>
+
+To update Hashwarp, change the Installation URL to the new release's package.
+
+---
+
+## mmpOS
+
+<Steps>
+  <Step title="Copy the package's link">
+    On the [releases page](https://github.com/ParallaxProtocol/hashwarp/releases), copy the link of `hashwarp-<version>-mmpos.tgz`.
+  </Step>
+
+  <Step title="Create a miner profile">
+    Create a miner profile of the **Custom miner** type with the package's link, your Parallax wallet and the pool. The package maps the profile's pool, wallet, worker, password and TLS setting to Hashwarp's options.
+
+    Extra Hashwarp options can be added after the profile's arguments, for example `--temp-stop 85`.
+  </Step>
+
+  <Step title="Apply it to your rigs">
+    mmpOS downloads Hashwarp, starts it and shows its statistics.
+  </Step>
+</Steps>
+
+---
+
+## Other rig operating systems
+
+Any Linux with glibc 2.28 or newer runs the Linux archive as it is: see [Configuration](/hashwarp/configuration) to run it as a service. A RaveOS package isn't available yet.

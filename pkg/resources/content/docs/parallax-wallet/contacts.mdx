@@ -1,0 +1,99 @@
+---
+title: "Contacts in Parallax Wallet"
+sidebarTitle: "Contacts"
+description: "Keep the addresses you send to under a name, pick them when sending, and import or export your contacts as JSON or CSV."
+---
+
+**Contacts** is your address book: the people and services you send to,
+saved under a name. You can pick them by name on **Send**, and the app
+recognises them in your activity, on the review before you send, and when
+you verify a signed message.
+
+Your contacts are encrypted with your wallet password, like your keys:
+who you pay says a lot about you. They can only be read or changed while
+the wallet is unlocked.
+
+---
+
+## Add a contact
+
+Choose **Add contact** and fill in:
+
+- **Name**: who or what the address belongs to, up to 64 characters.
+- **Address**: paste the full address. A mixed-case address is checked
+  against its checksum, so a mistyped character is caught.
+- **Note** (optional): what you pay them for, an invoice reference, up to
+  500 characters.
+
+Each name and each address can be saved only once: a name always means one
+address, so a look-alike entry can't hide behind a familiar one. The app
+also tells you when the address is one of your own accounts.
+
+---
+
+## Your contacts
+
+- **Favorites** sit at the top of the page as tiles: click one to send to
+  it. Star or unstar a contact from its row.
+- **All contacts** lists the rest, favorites first, then by name, with when
+  you last sent to each. Search by name, address or note.
+- **Open a contact** to see its address in full, grouped to check against
+  what the other party gave you, when it was added and last sent to, and
+  its note. From there you can send to it, star it, edit it, **Show
+  history** (your transactions with it) or remove it.
+
+Removing a contact doesn't affect any transactions.
+
+---
+
+## Sending to a contact
+
+On **Send**, type a contact's name, or choose from your contacts, instead of
+an address. The review shows who you're sending to. Contacts you've sent to
+recently are offered first.
+
+<Warning>
+A contact is where you'll send funds. Check a new contact's address against
+where it came from before you save it, and again when someone asks you to
+change it.
+</Warning>
+
+---
+
+## Import and export
+
+**Export** saves your contacts as JSON or CSV, for a backup or another
+wallet. **Import** takes:
+
+- A JSON export from Parallax Wallet, or a plain JSON list of
+  `{ "name", "address", "note" }` entries.
+- A CSV file with a `name` and an `address` column. `note` and `favorite`
+  columns are read when they're there.
+
+For example:
+
+```csv
+name,address,note,favorite
+Alice,0x1111111111111111111111111111111111111111,Rent,yes
+Exchange deposit,0x2222222222222222222222222222222222222222,,
+```
+
+Every entry is checked as if typed. An import never overwrites: entries
+whose name or address is already in your contacts are skipped. When it's
+done, the app says how many were added, how many were already there, and
+how many weren't valid, with why for the first few. Files are limited to
+2 MB.
+
+<Note>
+An exported file isn't encrypted. Keep it as private as you'd keep the list
+of people you pay.
+</Note>
+
+---
+
+## AI assistants and contacts
+
+An [AI assistant](/parallax-wallet/ai-assistants) can read your contacts
+and ask to add or change one, only as far as you allow in **Settings → AI
+assistants → Permissions**. Each change waits for you to approve it, and no
+assistant can remove a contact.

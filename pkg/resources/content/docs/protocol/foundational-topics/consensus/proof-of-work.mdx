@@ -1,20 +1,20 @@
 Parallax uses a consensus mechanism that involves **Proof-of-work (PoW),** similar to Bitcoin. This allowed the nodes of the Parallax network to agree on the state of all information recorded on the Parallax blockchain and prevents certain kinds of economic attacks.
 
-### Prerequisites <a href="#prerequisites" id="prerequisites"></a>
+### Prerequisites
 
 To better understand this page, we recommend you first read up on [transactions](/protocol/foundational-topics/transactions), [blocks](/protocol/foundational-topics/blocks), and [consensus mechanisms](/protocol/foundational-topics/consensus/overview).
 
-### What is Proof-of-work (PoW)? <a href="#what-is-pow" id="what-is-pow"></a>
+### What is Proof-of-work (PoW)?
 
 Nakamoto consensus, which utilizes proof-of-work, is the mechanism that allows the decentralized Parallax network to come to consensus (i.e. all nodes agree) on things like account balances and the order of transactions. This prevents users from "double spending" their coins and ensured that the Parallax chain is tremendously difficult to attack or manipulate.
 
-### Proof-of-work and mining <a href="#pow-and-mining" id="pow-and-mining"></a>
+### Proof-of-work and mining
 
 Proof-of-work is the underlying algorithm that sets the difficulty and rules for the work miners do on proof-of-work blockchains. Mining is the "work" itself. It's the act of adding valid blocks to the chain. This is important because the chain's length helps the network follow the correct fork of the blockchain. The more "work" done, the longer the chain, and the higher the block number, the more certain the network can be of the current state of things.
 
 [More on mining](/protocol/foundational-topics/consensus/mining)
 
-### How Parallax's proof-of-work work? <a href="#how-it-works" id="how-it-works"></a>
+### How Parallax's proof-of-work work?
 
 Parallax transactions are processed into blocks, with each block containing:
 
@@ -24,7 +24,7 @@ Parallax transactions are processed into blocks, with each block containing:
 
 This block data is directly related to proof-of-work.
 
-#### The work in proof-of-work <a href="#the-work" id="the-work"></a>
+#### The work in proof-of-work
 
 The proof-of-work protocol, XHash, requires miners to go through an intense race of trial and error to find the nonce for a block. Only blocks with a valid nonce can be added to the chain.
 
@@ -34,7 +34,7 @@ The difficulty determined the target for the hash. The lower the target, the sma
 
 Hashing makes fraud easy to spot. But proof-of-work as a process is also a big deterrent to attacking the chain.
 
-#### Proof-of-work and security <a href="#security" id="security"></a>
+#### Proof-of-work and security
 
 Miners are incentivized to do this work on the main Parallax chain. There is little incentive for a subset of miners to start their own chain—it undermines the system. Blockchains rely on having a single state as a source of truth.
 
@@ -42,13 +42,13 @@ The objective of proof-of-work is to extend the chain. The longest chain is most
 
 To consistently create malicious yet valid blocks, a malicious miner would need over 51% of the network mining power to beat everyone else. That amount of "work" requires a lot of expensive computing power and the energy spent might even have outweighed the gains made in an attack.
 
-#### Proof-of-work economics <a href="#economics" id="economics"></a>
+#### Proof-of-work economics
 
 Proof-of-work was also responsible for issuing new currency into the system and incentivizing miners to do the work.
 
 Similar to Bitcoin, miners who successfully create a block are rewarded with freshly minted Laxes and part of the transaction fees. Following the Bitcoin standard, the initial block reward is 50 Laxes and the reward halves every 210,000 block, or approximately 4 years.
 
-### Finality <a href="#finality" id="finality"></a>
+### Finality
 
 A transaction has "finality" on Parallax when it's part of a block that can't change.
 
@@ -56,16 +56,22 @@ Because miners work in a decentralized way, two valid blocks could be mined at t
 
 To complicate things further, transactions rejected on the temporary fork may not have been included in the accepted chain. This means it could get reversed. So finality refers to the time you should wait before considering a transaction irreversible. Under proof-of-work, the more blocks were mined on top of a specific block `N`, the higher confidence that the transactions in `N` were successful and would not be reverted.
 
-### More of a visual learner? <a href="#visual-learner" id="visual-learner"></a>
+### More of a visual learner?
 
-### Further Reading <a href="#further-reading" id="further-reading"></a>
+### Further Reading
 
 * [Majority attack](https://en.bitcoin.it/wiki/Majority_attack)
 
-#### Videos <a href="#videos" id="videos"></a>
+#### Videos
 
 * [A technical explanation of proof-of-work protocols](https://youtu.be/9V1bipPkCTU)
 
-### Related Topics <a href="#related-topics" id="related-topics"></a>
+### Related Topics
 
 * [Mining](/protocol/foundational-topics/consensus/mining)
+
+{/* third-party attribution */}
+
+---
+
+_Adapted from [Proof-of-work (PoW)](https://ethereum.org/developers/docs/consensus-mechanisms/pow/) on ethereum.org, © ethereum.org contributors, under the MIT License. See the [third-party notices](https://github.com/ParallaxProtocol/parallax-docs/blob/main/THIRD_PARTY_NOTICES.md)._

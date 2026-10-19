@@ -1,0 +1,71 @@
+---
+title: "Safety"
+sidebarTitle: "Safety"
+description: "Temperature limits, the watchdog, checked results and exit codes: how Hashwarp protects your rig."
+---
+
+Hashwarp watches each GPU's temperatures and health while it mines, and checks every result before sending it.
+
+---
+
+## Temperatures
+
+Hardware monitoring is on by default (`--no-hwmon` turns it off). Hashwarp reads NVIDIA GPUs through the NVIDIA driver, and AMD GPUs on Linux through the kernel driver: core, junction and memory temperatures, fan, power and clocks. On Windows, AMD GPUs older than Vega report their temperature, fan and power; newer AMD GPUs report nothing on Windows.
+
+| Option | Meaning |
+| ------ | ------- |
+| `--temp-stop 85` | Pause a GPU when its core reaches 85°C |
+| `--temp-resume 70` | Resume it at 70°C (default: 15° below `--temp-stop`) |
+| `--mem-temp-stop 100` | Pause a GPU at this memory temperature, or hotspot temperature on GPUs without a memory sensor |
+| `--mem-temp-resume 90` | Resume it at this temperature (default: 10° below `--mem-temp-stop`) |
+| `--shutdown-temp 95` | Stop Hashwarp (exit code 6) when any GPU temperature reaches 95°C |
+
+The temperature limits take [one value per GPU](/hashwarp/configuration#lists-per-gpu), or one for all. A paused GPU is logged with a warning, and resumes by itself once it has cooled down:
+
+```
+14:02:11  WARN  gpu1   Reached 85°C, pausing until 70°C
+14:03:40  INFO  gpu1   Cooled down to 70°C, resuming
+```
+
+<Note>
+  `--mem-temp-stop` needs a GPU that reports its memory or hotspot temperature. Most AMD GPUs on Linux report both, but NVIDIA's driver doesn't report them for many GeForce cards. When a GPU reports neither, Hashwarp warns that `--mem-temp-stop` has no effect on it. The statistics table (`s`) shows which temperatures each GPU reports.
+</Note>
+
+---
+
+## The watchdog
+
+The watchdog restarts a GPU whose mining failed, and stops Hashwarp when a GPU hangs, so that a supervisor can start it again:
+
+| Option | Meaning |
+| ------ | ------- |
+| `--watchdog-restarts 3` | Restart a GPU whose mining failed up to 3 times per hour. After that it is left stopped while the other GPUs mine on; when no GPU is left mining, Hashwarp exits (code 5) |
+| `--watchdog-timeout 120` | Exit (code 5) when a GPU gives no sign of life for 120 seconds, which is usually a GPU or driver hang (`0`: off) |
+| `--watchdog-script` | A program to run before exiting, with the GPU index and the reason as arguments; for example to reboot the rig |
+| `--exit` | Exit when a GPU fails, instead of restarting it |
+
+A hung GPU can't be recovered by Hashwarp: the watchdog exits so that Hashwarp, or the whole rig, can be restarted. Run Hashwarp under a supervisor that starts it again: HiveOS or mmpOS, a [systemd service](/hashwarp/configuration#running-as-a-service-linux), or a loop in a script. Overclocks are restored on a watchdog exit.
+
+---
+
+## Checked results
+
+Every solution a GPU finds is checked on the CPU before it is sent. A wrong one, usually from too high a memory overclock, isn't submitted: it counts as `F` (failed) in the share counts and is logged:
+
+```
+10:14:02  WARN  gpu0   Wrong result, lower the overclock if it happens often
+```
+
+`hashwarp --selftest` runs the same check offline and says PASS or FAIL per GPU: see [GPUs & Tuning](/hashwarp/gpus-and-tuning).
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+| ---- | ------- |
+| 0 | Normal exit, or `--selftest` passed |
+| 1 | Invalid options, or `--selftest` failed |
+| 2 | Runtime error, such as no usable GPU |
+| 5 | Watchdog: a GPU kept failing or stopped responding |
+| 6 | A GPU reached `--shutdown-temp` |

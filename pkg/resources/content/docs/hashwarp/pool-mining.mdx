@@ -1,40 +1,35 @@
 ---
 title: "Mining on a Pool"
-description: "Beginner-friendly guide on how to mine using a mining pool."
+sidebarTitle: "Pool Mining"
+description: "How to mine Parallax on a pool with Hashwarp: choosing a pool, connecting, TLS and failover pools."
 ---
 
-Mining on a pool allows you to combine your hashrate with other miners. Instead of waiting to find a block on your own, the pool finds blocks collectively and distributes rewards among all participants. This makes earnings more **regular and predictable** compared to solo mining.
-
----
-
-## Prerequisites
-
-- Installed GPU mining software such as [Hashwarp](/hashwarp/getting-started).  
-- An account address to receive rewards.
-- The address of a Parallax mining pool (for example, `pool.example.com:3333`).  
+Mining on a pool combines your hashrate with other miners'. Instead of waiting to find a block on your own, the pool finds blocks together and shares the rewards among its miners, which makes earnings **regular and predictable**. To keep the whole block reward for yourself instead, see [Solo Mining](/hashwarp/solo-mining).
 
 ---
 
 ## Step-by-step Guide
 
 <Steps>
-  <Step title="Choose a mining pool">
-    Parallax pools are listed on [miningpoolstats](https://miningpoolstats.stream/parallax). Hashwarp's first-run wizard offers the known ones too.
+  <Step title="Choose a pool">
+    Parallax pools are listed on [miningpoolstats](https://miningpoolstats.stream/parallax). These take your Parallax address as the user name (checked in October 2026):
 
-    Pools usually give two ports:
-    - **TCP**: for most miners
-    - **TLS (SSL)**: encrypted, recommended when available
+    | Pool | Scheme, fee | Address | TLS address |
+    | ---- | ----------- | ------- | ----------- |
+    | [coolpool.top](https://coolpool.top/pool/prlx) | PPLNS 1% | `prlx.coolpool.top:3003` | |
+    | [coolpool.top](https://coolpool.top/pool/prlxsolo) | SOLO 1.5% | `prlx.coolpool.top:3002` | |
+    | [cedric-crispin.com](https://parallax.cedric-crispin.com) | PPLNS 0.1% | `parallax.cedric-crispin.com:4554` | |
+    | [pool.ion.cool](https://pool.ion.cool/parallax) | PPLNS 1% | `pool.ion.cool:33350` | |
+    | [rplant.xyz](https://pool.rplant.xyz) | PPLNS 1% | `stratum-<region>.rplant.xyz:7159` | `stratum-<region>.rplant.xyz:17159` |
+
+    rplant's regions are `eu`, `na`, `asia` and `ru`; coolpool also has `eu.`, `us.` and `asia.` hosts. [gtpool.io](https://gtpool.io) takes its own account ID instead of an address. Hashwarp's first-run wizard offers these pools too.
 
     <Warning>
-      Prefer a pool that finds less than half of the network's blocks. A pool with the majority can reverse payments and block transactions, which puts the coin you mine at risk. The [Parallax status page](https://status.parallaxprotocol.org) shows each pool's share, and Hashwarp warns you when your pool has the majority.
+      Prefer a pool that finds less than half of the network's blocks. A pool with the majority can reverse payments and block transactions, which puts the coin you mine at risk. The [Parallax status page](https://status.parallaxprotocol.org) shows each pool's share, and Hashwarp [warns you](#pools-with-the-majority) when your pool has the majority.
     </Warning>
   </Step>
 
-  <Step title="Run your miner">
-    Use Hashwarp (or another XHash-compatible miner) to connect to the pool.
-
-    Example command with Hashwarp:
-
+  <Step title="Start Hashwarp">
     ```bash
     hashwarp --pool <POOL_HOST>:<PORT> --wallet <YOUR_ADDRESS> --worker rig1
     ```
@@ -42,33 +37,101 @@ Mining on a pool allows you to combine your hashrate with other miners. Instead 
     Replace `<POOL_HOST>:<PORT>` with the pool's address and `<YOUR_ADDRESS>` with your Parallax address.
     - Add `--tls` for a TLS port.
     - The worker name (`rig1`) tells your rigs apart on the pool's dashboard.
-    - Give several pools separated by commas: Hashwarp moves to the next one when a pool fails.
     - No password is required for most pools.
+
+    Or run `hashwarp` without options and answer the wizard's questions: see [Configuration](/hashwarp/configuration).
   </Step>
 
-  <Step title="Confirm shares are submitted">
-    If everything is working, you’ll see logs like:
+  <Step title="Check that shares are accepted">
+    Each share the pool accepts is logged:
 
     ```
     16:12:42  INFO  share  ✔ accepted gpu0 · diff 8.59 GH · 364 ms · A42
     ```
 
-    Each accepted share means your miner contributed valid work to the pool.
+    The line shows the GPU that found it, the share's difficulty, the time the pool took to answer and the shares so far. A rejected share is a warning with the pool's reason.
   </Step>
 
-  <Step title="Check pool dashboard">
-    Most pools provide a web dashboard where you can enter your address to see:
-    - Current hashrate  
-    - Number of accepted shares  
-    - Pending rewards  
-    - Payout history  
+  <Step title="Check the pool's dashboard">
+    Most pools have a web dashboard where you enter your address to see your hashrate as the pool sees it, accepted shares, pending rewards and payouts. It can take a few minutes to show a new rig.
   </Step>
 </Steps>
 
 ---
 
+## Options
+
+| Option | Meaning |
+| ------ | ------- |
+| `--pool` | `host:port`, or a URL (see below). Repeat it or separate pools with commas: the next pool is used when one fails |
+| `--wallet` | Your Parallax address. Also read from the `HASHWARP_WALLET` environment variable |
+| `--worker` | The rig's name on the pool's dashboard |
+| `--password` | Pool password, `x` by default |
+| `--tls` | Connect to `host:port` pools with TLS |
+| `--esm` | Stratum flavour, when a pool needs one (see below) |
+| `--pool-retries` | Connection attempts before moving to the next pool (3) |
+| `--retry-delay` | Seconds before reconnecting (5), doubled after each failed attempt up to 120. A single pool is retried forever |
+| `--failover-timeout` | Minutes on a failover pool before trying the first one again (0: stay) |
+| `--report-hashrate` | Send the hashrate to the pool, for pools that show it |
+
+See [all options](/hashwarp/options#pool) for the timeouts.
+
+### Failover pools
+
+```bash
+hashwarp --pool a.example.com:3333,b.example.com:3333 --wallet <YOUR_ADDRESS> --worker rig1
+```
+
+Hashwarp mines on the first pool and moves to the next when the first fails `--pool-retries` times in a row. With `--failover-timeout 30` it tries the first pool again after 30 minutes on another.
+
+### Pool URLs
+
+Pools can also be given as URLs, which is how ethminer and Hashwarp 1.x took them (`-P` still works):
+
+```bash
+hashwarp --pool stratum+ssl://pool.example.com:4443 --wallet <YOUR_ADDRESS>
+hashwarp -P stratum2+tcp://<YOUR_ADDRESS>.rig1@pool.example.com:3333
+```
+
+The scheme is `stratum`, `stratum1` (EthProxy), `stratum2` (EthereumStratum/1.0.0) or `stratum3` (EthereumStratum/2.0.0), followed by `+tcp`, or `+ssl` / `+tls` for TLS. If the URL has no wallet, `--wallet` and `--worker` are added.
+
+### Stratum flavours
+
+Pools speak one of several Stratum dialects. By default Hashwarp tries EthereumStratum/1.0.0, then EthProxy, then plain Stratum, and logs the one the pool accepted:
+
+```
+12:00:00  INFO  pool   Protocol EthereumStratum/1.0.0
+```
+
+If a pool needs a particular one, `--esm` sets it: `0` EthProxy, `1` or `2` EthereumStratum/1.0.0 (NiceHash), `3` EthereumStratum/2.0.0. EthereumStratum/2.0.0 is only used with `--esm 3`.
+
+### Difficulty
+
+Pool difficulty is counted in units of 2<sup>32</sup> hashes, like the pools count it: difficulty 1 is a share every 4.29 billion hashes on average. Hashwarp writes difficulties in hashes, so a pool difficulty of 2 is `diff 8.59 GH`.
+
+---
+
+## Pools with the majority
+
+A pool that finds more than half of the blocks can reverse payments and block transactions. Hashwarp reads the pools' shares of the last 7 days' blocks from [status.parallaxprotocol.org](https://status.parallaxprotocol.org) every 10 minutes. When your pool has the majority it says so at startup and then every hour, with the smaller pools to move to:
+
+```
+05:26:47  WARN  pool   rplant.xyz found 86% of the network's blocks in the last 7 days. A pool with the majority can reverse payments and block transactions, which puts the coin you mine at risk
+05:26:47  WARN  pool   Please mine on a smaller pool (coolpool.top 13% · gtpool.io 1%) or solo (--solo). https://status.parallaxprotocol.org has the figures; --no-pool-check hides this
+```
+
+The [dashboard](/hashwarp/dashboard) shows it too, and the first-run wizard lists such a pool last.
+
+- Hashwarp never changes pools by itself: moving is your choice.
+- The request sends nothing about you or your rig, only Hashwarp's version as the User-Agent. If it fails, Hashwarp carries on mining without a word.
+- It doesn't run when solo mining, in simulation, `--selftest` or `--oc-tune`.
+- `--no-pool-check` turns it off.
+
+---
+
 ## Tips & Troubleshooting
 
-- If you see **rejected shares**, check your GPU settings or lower overclocking.  
-- Always choose a pool with servers close to your region for lower latency.  
-- Make sure your wallet address is correct — rewards cannot be recovered.
+- **Rejected shares** with a reason like `low difficulty`: the pool may need another Stratum flavour; try `--esm`. **Wrong results** (the `F` count): lower the GPU's overclock.
+- Choose a pool with servers close to you: the share latency in the log should stay well under a second.
+- Make sure your address is right: rewards sent to a wrong address can't be recovered.
+- More in [Troubleshooting](/hashwarp/troubleshooting).

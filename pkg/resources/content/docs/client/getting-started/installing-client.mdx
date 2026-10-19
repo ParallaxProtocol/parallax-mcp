@@ -5,7 +5,7 @@ title: 'Installing the Parallax Client'
 There are several ways to install the Parallax client, including via a package manager, downloading a pre-built bundle, running as a docker container or building from downloaded source code.
 
 <Note>
-Not comfortable with the terminal? **[Parallax Wallet](/guides/parallax-wallet/introduction)** is a native GUI application that bundles a full Parallax node in a single installer for Windows, macOS, and Linux — no command line required. The rest of this page covers the CLI client.
+Not comfortable with the terminal? **[Parallax Wallet](/parallax-wallet/introduction)** is a native GUI application that bundles a full Parallax node in a single installer for Windows, macOS, and Linux — no command line required. The rest of this page covers the CLI client.
 </Note>
  On this page the various installation options are explained for several major operating systems. Users prioritizing ease of installation should choose to use a package manager or prebuilt bundle. Users prioritizing customization should build from source. It is important to run the latest version of the Parallax client because each release includes bug fixes and improvements over the previous versions. The stable releases are recommended for most users because they have been fully tested. A list of stable releases can be found [here](https://github.com/ParallaxProtocol/parallax/releases). Instructions for updating existing Parallax installations are also provided in each section.
 
@@ -157,3 +157,9 @@ build/bin/parallaxd
 Additionally all the developer tools provided with Parallax (clef, devp2p, abigen, bootnode, evm and rlpdump) can be compiled by running `make all`.
 
 To build a stable release, e.g. v1.0.0, the command `git checkout v1.0.0` retrieves that specific version. Executing that command before running `make parallax` switches the Parallax client to a stable branch.
+
+{/* third-party attribution */}
+
+---
+
+_Partly adapted from [Installing Geth](https://geth.ethereum.org/docs/getting-started/installing-geth) in the go-ethereum documentation, © The go-ethereum Authors. See the [third-party notices](https://github.com/ParallaxProtocol/parallax-docs/blob/main/THIRD_PARTY_NOTICES.md)._

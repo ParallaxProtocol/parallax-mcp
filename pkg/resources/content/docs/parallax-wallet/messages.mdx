@@ -1,0 +1,90 @@
+---
+title: "Signing messages in Parallax Wallet"
+sidebarTitle: "Signing messages"
+description: "Prove you control an address by signing a message with it, and check a message someone else signed."
+---
+
+Signing a message proves you control an address without sending anything:
+you sign a short text with the account's key, and anyone can check the
+signature against the address. Exchanges, pools and other services
+sometimes ask for one, as does anyone who wants to know an address is
+yours.
+
+Parallax Wallet signs with the standard personal-message signature
+(EIP-191, as `personal_sign`), so signatures made here can be checked in
+other wallets, and the other way round. Signing a message never moves
+funds.
+
+---
+
+## Sign a message
+
+<Steps>
+  <Step title="Open Sign message">
+    Choose **Sign message** in the sidebar. It signs as the account selected
+    in the account switcher, shown under **Signing as**.
+  </Step>
+  <Step title="Write the message">
+    Type the text to sign, for example `I control this address. 2026-10-19`.
+    A message is 1 to 1024 bytes of text. Line breaks and tabs are fine;
+    other control characters aren't, so what you see is everything that's
+    signed.
+  </Step>
+  <Step title="Sign it">
+    Choose **Sign message**. From a hardware wallet account, the device shows
+    the message: check it there, then approve it.
+  </Step>
+  <Step title="Share it">
+    The app shows the address, the message and the signature, each with a
+    copy button. **Copy** copies all three together, which is what the other
+    party needs to check it.
+  </Step>
+</Steps>
+
+<Warning>
+Only sign text you wrote or fully understand. Anyone you give the signature
+to can show it as proof that your address signed it.
+</Warning>
+
+### From a watch-only account
+
+A watch-only account's key is on your [offline signer](/parallax-wallet/offline-signing),
+so the message is signed there:
+
+1. Write the message, then **Create signing request**. The app shows it as
+   a QR code, and can save it as a file.
+2. On the offline signer, choose **Sign** and scan the code, or open the
+   file. Read the whole message, check that the fingerprint matches the one
+   your everyday computer shows, then sign it.
+3. Back on your everyday computer, **Scan signed message**: hold up the QR
+   code the signer shows, or open the file it saved. The app checks that
+   it's the message you asked for, and that the signature is from the
+   account.
+
+---
+
+## Verify a message
+
+**Verify message** checks anyone's signed message. It needs no account.
+
+1. Fill in the **message**, the **address** that's meant to have signed it,
+   and the **signature**. Or choose **Scan or open** to fill them in from a
+   signed message's QR code or file.
+2. Choose **Verify**.
+
+The answer is one of:
+
+- **Valid signature**: the address signed exactly this message. If the
+  address is one of your accounts or a contact, the app names it.
+- **Not signed by this address**: the signature is valid but made by
+  another address, which the app shows. Either the address or the message
+  isn't what was signed.
+
+The message must match character for character: an added space or line
+break changes it.
+
+<Note>
+The app takes signatures in the common `0x…` form, and also as the
+`parallax-wallet signmessage` command-line tool prints them. It writes them
+in the common form.
+</Note>

@@ -1,0 +1,80 @@
+---
+title: "Dashboard"
+sidebarTitle: "Dashboard"
+description: "Watch one rig or all of them in Hashwarp's web dashboard."
+---
+
+Hashwarp has a web dashboard: the hashrate, its averages and the effective hashrate, shares, and each GPU's temperatures, fan, power and efficiency, refreshed every 5 seconds. It can show your other rigs too.
+
+---
+
+## Turning it on
+
+```bash
+hashwarp ... --api-bind 127.0.0.1:21550
+```
+
+Then open `http://127.0.0.1:21550` in a browser on the same computer. The dashboard follows your system's light or dark theme.
+
+| Option | Meaning |
+| ------ | ------- |
+| `--api-bind address:port` | Listen on this address and port. `127.0.0.1:21550` is this computer only; `0.0.0.0:21550` is every network interface, to open the dashboard from another computer |
+| `--api-token secret` | Require this secret. The dashboard asks for it once per browser session |
+| `--api-allow-control` | Add pause, resume and restart buttons (and allow the same through the [API](/hashwarp/api)) |
+
+<Warning>
+  The dashboard is plain HTTP: on `0.0.0.0` anyone on your network can open it, and a token travels unencrypted. Set `--api-token` there, and reach a rig over the internet through a VPN or an SSH tunnel rather than by opening the port. Control on an address other than `127.0.0.1` requires a token.
+</Warning>
+
+---
+
+## All your rigs in one dashboard
+
+Give the rig whose dashboard you open the other rigs' addresses with `--rig`:
+
+```bash
+hashwarp ... --api-bind 0.0.0.0:21550 --rig rig2=10.0.0.12 --rig rig3=s3cret@10.0.0.13:21550
+```
+
+Each other rig needs `--api-bind` on an address this rig can reach (`0.0.0.0:21550`, or its own network address), and Hashwarp 2.0 or later. This rig reads their status every 5 seconds, so your browser only talks to one rig and the other rigs' tokens stay on it.
+
+A rig is written `[name=][token@]host[:port]`:
+
+- `name`: shown on the dashboard. The host by default.
+- `token`: the rig's `--api-token`, if it has one.
+- `host:port`: its `--api-bind` address. Port 21550 by default.
+
+Repeat `--rig`, or separate rigs with commas. In the configuration file: `"rig": ["rig2=10.0.0.12", "rig3=s3cret@10.0.0.13"]`.
+
+The dashboard then starts with a table of the rigs, this one first under its worker name: status, hashrate and 15 minute average, shares, GPUs, the hottest GPU, power, efficiency, pool and uptime, with the totals. Click a rig to see its GPUs. A rig's status shows what needs a look:
+
+- **unreachable**, with the reason and when it was last seen;
+- **not connected** to its pool;
+- **paused** GPUs;
+- **hot**: a GPU at 85°C or more;
+- **rejected shares**: more than 5% of its shares;
+- **majority pool**: its pool finds most of the network's blocks.
+
+Hashwarp also logs when a rig goes offline and comes back:
+
+```
+09:48:18  WARN  rigs   rig3 (10.0.0.13:21550) unreachable: no answer in 4.0 s
+```
+
+---
+
+## A dashboard without mining: --monitor
+
+`--monitor` runs Hashwarp only for this view, on a computer that doesn't mine, such as a home server or a laptop:
+
+```bash
+hashwarp --monitor --api-bind 0.0.0.0:21550 --rig rig1=10.0.0.11,rig2=10.0.0.12,rig3=10.0.0.13
+```
+
+It needs no GPU and no GPU driver.
+
+---
+
+## Prometheus and Grafana
+
+For history and alerts, Prometheus can scrape every rig's metrics; see [API](/hashwarp/api#prometheus). With `--rig`, one rig's metrics also cover the others' status, hashrate, shares and power.

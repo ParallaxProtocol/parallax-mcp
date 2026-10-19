@@ -131,10 +131,10 @@ and stops ten minutes after the last interest. Clients without
 subscription support can call `wait_for_new_block` instead.
 
 The documents are a snapshot embedded in the binary, searchable with the
-docs tools. CI refreshes it from the `parallax` repository's `main` branch
-and the PIP discussions whenever it builds an image, so published images
-carry current docs; locally, `make sync-content` does the same from
-`../parallax` (it needs the `gh` CLI).
+docs tools. CI refreshes it from the `parallax-docs` repository's `main`
+branch and the PIP discussions whenever it builds an image, so published
+images carry current docs; locally, `make sync-content` does the same from
+`../parallax-docs` (it needs the `gh` CLI).
 
 Prompts: `explain_transaction` (hash), `audit_address` (address),
 `network_health_report`.

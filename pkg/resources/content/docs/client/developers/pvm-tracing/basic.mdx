@@ -41,7 +41,7 @@ An example log for a single opcode entry has the following format:
 
 ### Generating basic traces
 
-To generate a raw EVM opcode trace, the Parallax client provides a few [RPC API endpoints](/client/interacting-with-parallax/json-rpc-namespaces/debug). The most commonly used is [debug\_traceTransaction](/client/interacting-with-parallax/json-rpc-namespaces/debug#debug-tracetransaction).
+To generate a raw EVM opcode trace, the Parallax client provides a few [RPC API endpoints](/client/interacting-with-parallax/json-rpc-namespaces/debug). The most commonly used is [debug\_traceTransaction](/client/interacting-with-parallax/json-rpc-namespaces/debug#debug_tracetransaction).
 
 In its simplest form, `traceTransaction` accepts a transaction hash as its only argument. It then traces the transaction, aggregates all the generated data and returns it as a **large** JSON object. A sample invocation from the Parallax client console would be:
 
@@ -94,3 +94,9 @@ To avoid those issues, the Parallax client supports running custom JavaScript tr
 This page described how to do basic traces in the Parallax client Basic traces are very low level and can generate lots of data that might not all be useful. Therefore, it is also possible to use a set of built-in tracers or write custom ones in Javascript or Go.
 
 Read more about [built-in](/client/developers/pvm-tracing/built-in) and [custom](/client/developers/pvm-tracing/custom-pvm) tracers.
+
+{/* third-party attribution */}
+
+---
+
+_Adapted from [Basic traces](https://geth.ethereum.org/docs/developers/evm-tracing/basic-traces) in the go-ethereum documentation, © The go-ethereum Authors. See the [third-party notices](https://github.com/ParallaxProtocol/parallax-docs/blob/main/THIRD_PARTY_NOTICES.md)._

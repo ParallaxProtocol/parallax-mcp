@@ -30,6 +30,8 @@ func TestSearchRanksTheRightPage(t *testing.T) {
 		"difficulty adjustment ASERT":     {"pip-0002", 1},
 		"metamask network settings":       {"guides/wallets/metamask", 1},
 		"connect claude mcp":              {"guides/ai/parallax-mcp", 1},
+		"sign a message in the wallet":    {"parallax-wallet/messages", 1},
+		"import contacts csv":             {"parallax-wallet/contacts", 1},
 	} {
 		out := e.MustCall(t, "search_docs", map[string]any{"query": query, "limit": 3})
 		var got []any
@@ -79,6 +81,18 @@ func TestReadDocLookupAndPaging(t *testing.T) {
 		"guides/mining/pool", "https://docs.parallaxprotocol.org/v2.1.x/guides/mining/pool"} {
 		if out := e.MustCall(t, "read_doc", map[string]any{"path": ref}); out["title"] != "Mining on a Pool" {
 			t.Errorf("%s: %v", ref, out["title"])
+		}
+	}
+	// Parallax Wallet's pages, which moved out of the guides into a tab of their own
+	for ref, want := range map[string]string{
+		"guides/parallax-wallet/settings":                                   "parallax-wallet/settings",
+		"https://docs.parallaxprotocol.org/guides/parallax-wallet/accounts": "parallax-wallet/accounts",
+		"guides/ai/parallax-wallet":                                         "parallax-wallet/ai-assistants",
+		"https://docs.parallaxprotocol.org/v2.1.x/guides/client/desktop":    "parallax-wallet/introduction",
+		"guides/wallets/hardware-wallets":                                   "parallax-wallet/hardware-wallets",
+	} {
+		if out := e.MustCall(t, "read_doc", map[string]any{"path": ref}); out["path"] != want {
+			t.Errorf("%s resolved to %v, want %s", ref, out["path"], want)
 		}
 	}
 	for _, ref := range []string{"client/fundamentals/tor", "parallax-client/fundamentals/tor", "https://docs.parallaxprotocol.org/v2.0.x/parallax-client/fundamentals/tor"} {

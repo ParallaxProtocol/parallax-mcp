@@ -1,0 +1,98 @@
+---
+title: "Updating Parallax Wallet"
+sidebarTitle: "Updating"
+description: "How Parallax Wallet checks for, verifies and installs new versions, and how to update it by hand."
+---
+
+Parallax Wallet updates itself. Your wallet, your settings and the node's
+data are kept in their own folders (see
+[Files on your computer](/parallax-wallet/settings#files-on-your-computer)),
+so an update never touches them.
+
+---
+
+## Checking for updates
+
+The app looks for a new release shortly after it starts, then every 30
+minutes. To stop the background checks, turn off **Settings → General →
+Check for updates automatically**. You can still check at any time with
+**Check for updates** in **Settings → About**.
+
+When a new version is out, an **Update** button appears in the top bar.
+It opens what's new: the release notes of every version between yours and
+the latest. **Settings → About → Release notes** shows the notes of every
+version up to the one you're running.
+
+With **Use Tor** on (**Settings → Privacy**), the check and the download go
+through Tor.
+
+---
+
+## Installing an update
+
+Choose **Update**. The app downloads the new version, then checks it
+against the release's `SHA256SUMS.txt`. If the file doesn't match, or the
+checksums can't be read, nothing is installed. Then:
+
+| System | What happens |
+|---|---|
+| **Windows** (installed) | The new version's installer runs when you restart the app. |
+| **Windows** (portable `.exe`) | The executable is replaced; restart to use the new version. |
+| **Linux** (AppImage) | The AppImage file is replaced where it is; restart to use the new version. |
+| **macOS** | The new version's disk image opens: drag **Parallax Wallet** to *Applications* to replace the old one, then open it again. |
+
+Choose **Restart now** when you're ready. Your node stops cleanly and
+starts again with the app.
+
+If an update fails, the app says why, with **Retry**. You can always
+[update by hand](#updating-by-hand) instead.
+
+---
+
+## Updating by hand
+
+<Steps>
+  <Step title="Download the new version">
+    From the [releases page](https://github.com/ParallaxProtocol/parallax-wallet/releases/latest),
+    download the file for your computer (see
+    [Installing](/parallax-wallet/installing)) and `SHA256SUMS.txt`.
+  </Step>
+  <Step title="Check the download">
+    Compare the file's SHA-256 with its line in `SHA256SUMS.txt`:
+
+    <CodeGroup>
+    ```bash Linux
+    sha256sum --ignore-missing -c SHA256SUMS.txt
+    ```
+
+    ```bash macOS
+    shasum -a 256 --ignore-missing -c SHA256SUMS.txt
+    ```
+
+    ```powershell Windows
+    Get-FileHash .\Parallax-Wallet-<version>-windows-x86_64-setup.exe -Algorithm SHA256
+    ```
+    </CodeGroup>
+
+    On Linux and macOS, the file must print `OK`. On Windows, compare the
+    hash printed with the one in `SHA256SUMS.txt`.
+  </Step>
+  <Step title="Replace the old version">
+    Quit Parallax Wallet first.
+
+    - **Windows**: run the new installer, or replace the portable `.exe`.
+    - **macOS**: drag the new *Parallax Wallet* to *Applications*,
+      replacing the old one.
+    - **Linux**: replace the old AppImage with the new one, and make it
+      executable (`chmod +x`).
+  </Step>
+</Steps>
+
+---
+
+## Offline signers
+
+An [offline signer](/parallax-wallet/offline-signing) never goes online, so
+it never checks for updates. Update it by hand: download and check the new
+version on another computer, then carry it over, for example on a USB
+stick.

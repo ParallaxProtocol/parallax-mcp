@@ -1,0 +1,120 @@
+---
+title: "Troubleshooting Parallax Wallet"
+sidebarTitle: "Troubleshooting"
+description: "Common Parallax Wallet problems and what to do about them: installing, the node, sending, a forgotten password, and where to find the logs."
+---
+
+## Installing and opening
+
+| Problem | What to do |
+|---|---|
+| Windows says *Windows protected your PC* | The app isn't signed with a Windows certificate yet. Choose **More info → Run anyway**. |
+| macOS won't open the app | It isn't notarized by Apple yet. Open **System Settings → Privacy & Security**, scroll down and choose **Open Anyway** next to Parallax Wallet. |
+| The AppImage doesn't start on Linux | Make it executable (`chmod +x Parallax-Wallet-*.AppImage`). Some distributions need `libfuse2` installed to run AppImages. |
+| Opening the app only brings a window forward | Parallax Wallet is already running: only one copy runs at a time. |
+
+---
+
+## The node
+
+| Problem | What to do |
+|---|---|
+| The node bar says **Couldn't start** | Point at it to read why, in full. The cases below are the common ones. |
+| `datadir already used by another process` | Another node is using the same data directory, usually the [CLI client](/guides/client/setup) (`parallaxd`), which shares it by default. Stop it, then **Connect**. |
+| `address already in use` | Another program, often another node, holds a port the node needs: the peer port (32110), HTTP-RPC (8545) or WebSocket. Stop it, or choose other ports in **Settings → Network** and **Settings → RPC**. |
+| Stuck on **Looking for peers** | The node can't reach the network. Check your internet connection and that your firewall lets Parallax Wallet out. With **Use Tor** on, check that Tor is connected. You can also add a peer by hand; see [Peers](/parallax-wallet/your-node#peers). |
+| **Waiting for Tor** | With **Use Tor** on, the node starts only once Tor is connected, so nothing goes out directly. If Tor can't connect, turn it off in **Settings → Privacy**, or use the Tor already running on this computer. |
+| The node stopped, and a notification says the disk is nearly full | The node stops itself before its database runs out of space, which could corrupt it. Free up space, then **Connect**. The level is **Settings → Storage → Minimum free disk space**. |
+| Syncing is slow | The first sync takes hours, and more on a slow disk or connection. Keep the app open, turn on **Keep the computer awake** in **Settings → General**, and keep the node's data on an SSD. |
+| **Restart to apply your changes** | A setting you saved needs the node to restart. Use the button on the node bar. |
+
+If the chain data is damaged beyond what the node can recover from,
+**Settings → Storage → Delete chain data** removes the downloaded
+blockchain for the node to download it again. Your wallet and its accounts
+aren't touched, but syncing again takes hours.
+
+---
+
+## Balance and sending
+
+| Problem | What to do |
+|---|---|
+| No balance, or **Connect to see your balance** | Balances and activity come from your node: connect it, and wait for it to finish syncing. |
+| **Wait for the node to finish syncing before sending** | Sending needs the node in sync. Wait for **Synced** on the node bar. |
+| A send stays **Pending** | Miners haven't taken it yet, often because its fee is low. **Speed up** or **Cancel** it from its row; see [A send that's waiting](/parallax-wallet/send-and-receive#a-send-thats-waiting). |
+| A later send waits behind an earlier one | Sends from an account go into blocks in order. Speed up or cancel the earliest one that's waiting. |
+| Older activity is missing | On a new install the history is indexed in the background: older activity appears as it goes on. |
+| A transaction can't be found by its hash | Search by hash reaches about a year back. Go to the transaction's date instead. |
+
+---
+
+## The wallet
+
+| Problem | What to do |
+|---|---|
+| **Some of the wallet's files were damaged** | The app set them aside and opened with the last copy it could read, or without them. It lists what was affected (account names, contacts, signing requests and so on). Your keys and recovery phrases aren't in these files. |
+| The wallet locks itself | It locks after 15 minutes of inactivity. Change that in **Settings → Security → Lock automatically**. |
+| Accounts from a recovery phrase aren't the ones you expect | The other wallet may use another derivation path; see [Finding the right accounts](/parallax-wallet/accounts#finding-the-right-accounts). |
+| A Ledger or Trezor isn't seen, or won't sign | See [Hardware wallets → Troubleshooting](/parallax-wallet/hardware-wallets#troubleshooting). |
+| An AI assistant can't connect or is refused | See [AI assistants → Troubleshooting](/parallax-wallet/ai-assistants#troubleshooting). |
+
+### Forgotten wallet password
+
+Your wallet password can't be recovered or reset: nobody, including
+Parallax, can open the wallet without it. What brings your accounts back is
+your recovery phrases and your single keys' backup files.
+
+To start over with a new password:
+
+<Steps>
+  <Step title="Make sure you have your backups">
+    Your recovery phrases, written down, and the backup file of each single
+    key, with the password it was saved with. Hardware wallet accounts are
+    backed up by the device. Without these, the accounts can't come back.
+  </Step>
+  <Step title="Set the old wallet aside">
+    Quit Parallax Wallet. In the app's config folder (see
+    [Files on your computer](/parallax-wallet/settings#files-on-your-computer)),
+    rename the `Parallax` folder, for example to `Parallax-old`. Keep it: if
+    you remember the password later, renaming it back brings the wallet
+    back.
+  </Step>
+  <Step title="Set up again">
+    Open Parallax Wallet. It starts as on a first launch: if you had moved
+    the node's data, choose the same folder, so it doesn't download the
+    chain again. Then set a new password, and import your recovery phrases
+    and backups; see [Accounts](/parallax-wallet/accounts).
+  </Step>
+</Steps>
+
+If you had moved the wallet's folder in **Settings → Storage**, it isn't in
+the config folder: rename that folder too. On Windows, an older install may
+keep the node's data in `%APPDATA%\Parallax` as well: it's set aside with
+the rest, and the node downloads the chain again.
+
+---
+
+## Logs and crash reports
+
+- **Settings → Diagnostics** shows the node's and the app's logs live, with
+  a filter and a pause. Turn up **Log level** there to see more.
+- The logs are kept across restarts, encrypted so that only your unlocked
+  wallet can read them. **Clear logs on startup** starts each launch with an
+  empty log instead.
+- If the app crashes, it writes a report named `crash-<time>.log` to its
+  config folder (see
+  [Files on your computer](/parallax-wallet/settings#files-on-your-computer)).
+
+---
+
+## Reporting a problem
+
+In **Settings → About**, **Report a problem** opens a short form on GitHub,
+with the app's version filled in. Say what you did and what happened, and
+add the log lines around it.
+
+<Warning>
+Read what you paste first. Never share your recovery phrase, your password
+or a private key, there or anywhere else. Logs can name your addresses and
+transactions: leave out what you'd rather keep private.
+</Warning>

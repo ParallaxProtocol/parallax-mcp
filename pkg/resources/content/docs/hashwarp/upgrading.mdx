@@ -1,0 +1,65 @@
+---
+title: "Upgrading from 1.x"
+sidebarTitle: "Upgrading from 1.x"
+description: "What changes when you move from Hashwarp 1.x to Hashwarp 2.0."
+---
+
+Hashwarp 2.0 runs your 1.x command lines and configuration as they are. A few things work differently; this page lists them.
+
+---
+
+## One download for every GPU
+
+Hashwarp 1.x had separate CUDA and OpenCL builds. Hashwarp 2.0 has one build per system, which mines on NVIDIA GPUs with CUDA and on AMD and other GPUs with OpenCL, and needs no CUDA toolkit: only the GPU driver (NVIDIA 525 or newer).
+
+On Windows, NVIDIA GPUs no longer need the OpenCL runtime to be registered, and the archive no longer has `fix-opencl-icd.vbs`. If an AMD GPU isn't found, see [Troubleshooting](/hashwarp/troubleshooting#no-gpu-found-on-windows).
+
+---
+
+## Options
+
+Every 1.x option still works. Most have a new, clearer name, which `hashwarp --help` shows; the old names are listed by `hashwarp --help-all`:
+
+| 1.x | 2.0 |
+| --- | --- |
+| `-P stratum+tcp://0xAddress.rig1@pool:3333` | `--pool pool:3333 --wallet 0xAddress --worker rig1` |
+| `-P http://127.0.0.1:8545` | `--solo` |
+| `-U`, `-G` | `--backend cuda`, `--backend opencl` |
+| `--cu-devices`, `--cl-devices`, `--opencl-devices` | `--gpu-id` |
+| `--tstop`, `--tstart` | `--temp-stop`, `--temp-resume` |
+| `--farm-recheck` | `--getwork-interval` |
+| `--farm-retries` | `--pool-retries` |
+| `--cu-grid-size`, `--cu-block-size`, `--cu-streams` | `--cuda-grid-size`, `--cuda-block-size`, `--cuda-streams` |
+| `--api-port 3333` | `--api-bind 127.0.0.1:3333` |
+| `--api-password` | `--api-token` |
+| `-v 1` | `--log-debug json` |
+| `--cl-nobin` | Not needed: accepted and ignored |
+
+A configuration file can replace the long command lines: `--save-config hashwarp.json` writes one from your options. See [Configuration](/hashwarp/configuration).
+
+---
+
+## The output
+
+The output is new: each line has its time, level and source, hashrates are written `MH/s` and difficulties `GH`, and a line is printed per share. See [Output & Logs](/hashwarp/output-and-logs). Scripts that read 1.x's output should read `--log-format json` or the [API](/hashwarp/api) instead.
+
+---
+
+## The API
+
+- The API listens only where `--api-bind` says, and on `127.0.0.1` with the 1.x option `--api-port`.
+- It is read only unless `--api-allow-control` is given; with 1.x's `--api-port`, it is read only. Control on an address other than `127.0.0.1` requires `--api-token`.
+- The JSON-RPC methods of 1.x (`miner_getstat1` ...) still work, on the same port as the new [JSON API, dashboard and Prometheus metrics](/hashwarp/api).
+
+---
+
+## New in 2.0
+
+- A [first-run wizard](/hashwarp/configuration#the-first-run-wizard) and [configuration file](/hashwarp/configuration#the-configuration-file).
+- [Overclocking](/hashwarp/overclocking) with `--oc-tune`.
+- A [dashboard](/hashwarp/dashboard) for one rig or all of them.
+- [Temperature limits, a watchdog](/hashwarp/safety), and `--selftest`.
+- A warning when your pool finds [most of the network's blocks](/hashwarp/pool-mining#pools-with-the-majority).
+- [HiveOS and mmpOS](/hashwarp/rig-os) packages.
+
+The full list is in the [release notes](https://github.com/ParallaxProtocol/hashwarp/releases/tag/v2.0.0).

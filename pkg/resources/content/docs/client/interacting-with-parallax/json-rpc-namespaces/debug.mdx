@@ -453,7 +453,7 @@ type StdTraceConfig struct {
 
 ### debug\_standardTraceBadBlockToFile
 
-This method is similar to [`debug_standardTraceBlockToFile`](#debug-standardtraceblocktofile), but can be used to obtain info about a block which has been *rejected* as invalid (for some reason).
+This method is similar to [`debug_standardTraceBlockToFile`](#debug_standardtraceblocktofile), but can be used to obtain info about a block which has been *rejected* as invalid (for some reason).
 
 ### debug\_startCPUProfile
 
@@ -559,7 +559,7 @@ References: [RLP](/protocol/advanced/data-structures/rlp)
 
 ### debug\_traceBlockByNumber
 
-Similar to [debug\_traceBlock](#debug-traceblock), traceBlockByNumber accepts a block number and will replay the block that is already present in the database. For the second parameter see [TraceConfig](#traceconfig) reference.
+Similar to [debug\_traceBlock](#debug_traceblock), traceBlockByNumber accepts a block number and will replay the block that is already present in the database. For the second parameter see [TraceConfig](#traceconfig) reference.
 
 | CLIENT  | METHOD INVOCATION                                                              |
 | ------- | ------------------------------------------------------------------------------ |
@@ -571,7 +571,7 @@ References: [RLP](https://ethereum.org/en/developers/docs/data-structures-and-en
 
 ### debug\_traceBlockByHash
 
-Similar to [debug\_traceBlock](#debug-traceblock), traceBlockByHash accepts a block hash and will replay the block that is already present in the database. For the second parameter see [TraceConfig](#traceconfig) reference.
+Similar to [debug\_traceBlock](#debug_traceblock), traceBlockByHash accepts a block hash and will replay the block that is already present in the database. For the second parameter see [TraceConfig](#traceconfig) reference.
 
 | CLIENT  | METHOD INVOCATION                                                               |
 | ------- | ------------------------------------------------------------------------------- |
@@ -583,7 +583,7 @@ References: [RLP](/protocol/advanced/data-structures/rlp)
 
 ### debug\_traceBlockFromFile
 
-Similar to [debug\_traceBlock](#debug-traceblock), traceBlockFromFile accepts a file containing the RLP of the block. For the second parameter see [TraceConfig](#traceconfig) reference.
+Similar to [debug\_traceBlock](#debug_traceblock), traceBlockFromFile accepts a file containing the RLP of the block. For the second parameter see [TraceConfig](#traceconfig) reference.
 
 | CLIENT  | METHOD INVOCATION                                                                |
 | ------- | -------------------------------------------------------------------------------- |
@@ -595,7 +595,7 @@ References: [RLP](/protocol/advanced/data-structures/rlp)
 
 ### debug\_traceCall
 
-The debug\_traceCall method lets you run an eth\_call within the context of the given block execution using the final state of parent block as the base. The first argument (just as in eth\_call) is a transaction object. The block can be specified either by hash or by number as the second argument. The trace can be configured similar to [debug\_traceTransaction](#debug-tracetransaction), see [TraceConfig](#traceconfig). The method returns the same output as [debug\_traceTransaction](#debug-tracetransaction).
+The debug\_traceCall method lets you run an eth\_call within the context of the given block execution using the final state of parent block as the base. The first argument (just as in eth\_call) is a transaction object. The block can be specified either by hash or by number as the second argument. The trace can be configured similar to [debug\_traceTransaction](#debug_tracetransaction), see [TraceConfig](#traceconfig). The method returns the same output as [debug\_traceTransaction](#debug_tracetransaction).
 
 | CLIENT  | METHOD INVOCATION                                                                                                           |
 | ------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -686,7 +686,7 @@ please refer to the [subscription page](/client/interacting-with-parallax/json-r
 
 ### debug\_traceTransaction
 
-**OBS** In most scenarios, [debug.standardTraceBlockToFile](#debug-standardtraceblocktofile) is better suited for tracing!
+**OBS** In most scenarios, [debug.standardTraceBlockToFile](#debug_standardtraceblocktofile) is better suited for tracing!
 
 The traceTransaction debugging method will attempt to run the transaction in the exact same manner as it was executed on the network. It will replay any transaction that may have been executed prior to this one before it will finally attempt to execute the transaction that corresponds to the given hash.
 
@@ -821,3 +821,9 @@ Writes a goroutine blocking profile to the given file.
 | ------- | --------------------------------------------------------- |
 | Console | debug.writeMutexProfile(file)                             |
 | RPC     | \{method": "debug\_writeMutexProfile", "params": \[file]\}|
+
+{/* third-party attribution */}
+
+---
+
+_Adapted from [debug Namespace](https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-debug) in the go-ethereum documentation, © The go-ethereum Authors. See the [third-party notices](https://github.com/ParallaxProtocol/parallax-docs/blob/main/THIRD_PARTY_NOTICES.md)._

@@ -1,0 +1,126 @@
+---
+title: "Output & Logs"
+sidebarTitle: "Output & Logs"
+description: "Read Hashwarp's output, use its keys, and log to a file, to journald or as JSON lines."
+---
+
+## Reading the output
+
+Each line has the time, the level, the source and the message:
+
+```
+05:35:49  INFO  pool   Connected to prlx.coolpool.top [185.246.66.177:3003]
+05:35:49  INFO  pool   Protocol EthereumStratum/1.0.0
+05:35:49  INFO  pool   Authorized as 0xYourParallaxAddress.rig1
+05:35:49  INFO  gpu0   NVIDIA GeForce RTX 4090 · PCI 01:00.0 · compute 8.9 · 23.59 GB
+05:35:50  INFO  gpu0   DAG epoch 83 (1.65 GB) built in 356 ms · 19.87 GB free
+05:35:52  INFO  gpu0   Kernel standard (standard 115.32 MH/s, dedup 112.62 MH/s)
+05:38:10  INFO  share  ✔ accepted gpu0 · diff 8.59 GH · 357 ms · A1
+05:52:00  INFO  miner  116.24 MH/s · 60s 116.25 · 15m 115.44 · eff 153.96 · A13 R1 · 71°C · fan 53% · 378 W · 308 kH/J
+```
+
+The level is `INFO`, `WARN` or `ERROR` (and `DEBUG` with [`--log-level debug`](#options)). The source says what the line is about:
+
+| Source | About |
+| ------ | ----- |
+| `gpu0`, `gpu1` ... | A GPU, numbered as in `--list-devices`; each in its own color |
+| `pool` | The pool connection (`node` when solo mining) |
+| `share`, `block` | Accepted and rejected shares, blocks found when solo mining |
+| `miner` | Hashwarp itself: hashrate, start and stop |
+| `api`, `rigs` | The [dashboard and API](/hashwarp/dashboard), and the other rigs it shows |
+| `hwmon`, `oc`, `tune` | Sensors, [overclocking](/hashwarp/overclocking) and `--oc-tune` |
+
+### The hashrate line
+
+Every 10 seconds (`--display-interval`) Hashwarp prints:
+
+- the current hashrate, then its 1 minute (`60s`) and 15 minute (`15m`) averages;
+- `eff`: the effective hashrate, what the accepted shares of the last 15 minutes are worth, from 2 minutes after the start. It follows the pool's view of your hashrate, luck included, so it swings above and below the real one;
+- the shares: accepted (`A`), rejected by the pool (`R`) and failed (`F`), which are wrong results Hashwarp caught before sending them;
+- the temperature, fan, power draw and efficiency in kH/J (thousands of hashes per joule).
+
+With several GPUs, the totals come on the `miner` line, followed by a line per GPU:
+
+```
+12:00:10  INFO  miner  230.96 MH/s · 60s 230.80 · 15m 230.42 · eff 224.60 · A84 R1
+12:00:10  INFO  gpu0   115.48 MH/s · 65°C · fan 70% · 280 W · 412 kH/J
+12:00:10  INFO  gpu1   115.48 MH/s · 66°C · fan 72% · 281 W · 411 kH/J
+```
+
+### The statistics table
+
+Every 60 seconds (`--stats-interval`, `0` to turn it off), and when you press `s`, Hashwarp prints a table per GPU with the clocks as well, then the pool, its difficulty and the blocks left before the next epoch:
+
+```
+05:55:50  INFO  miner  GPU   Name                            MH/s       60s       15m      Shares  Temp  Fan  Power   kH/J      Clocks
+05:55:50  INFO  miner  gpu0  NVIDIA GeForce RTX 4090       116.26    116.26    116.15      A17 R1  71°C  53%   378W    307  2775/10251
+05:55:50  INFO  miner  Pool prlx.coolpool.top:3003 diff 8.59 GH, effective 152.71 MH/s, up 0:16, epoch 83
+```
+
+### Keys
+
+While Hashwarp runs in a terminal, these keys work (`--no-hotkeys` turns them off):
+
+| Key | Action |
+| --- | ------ |
+| `h` | Help: list the keys |
+| `s` | The statistics table |
+| `p` / `r` | Pause / resume every GPU |
+| `0` to `9` | Pause or resume that GPU |
+| `c` | The connection: pool, user, difficulty, epoch and pool switches |
+| `l` | Debug output on or off |
+| `q` | Quit |
+
+### Without UTF-8
+
+On a console without UTF-8 (on Linux, `LANG` not set to a UTF-8 locale, as in some services and containers), the symbols are replaced by ASCII: `|` for `·`, `+` for `✔`, `x` for `✘`, and `C` for `°C`.
+
+---
+
+## Logging to a file
+
+```bash
+hashwarp ... --log-file hashwarp.log
+```
+
+writes every line to the file as well, without colors and with the full date and time (ISO 8601, with the time zone). The file is rotated when it reaches 20 MB, keeping 3 old ones (`hashwarp.log.1` ...).
+
+## Options
+
+| Option | Meaning |
+| ------ | ------- |
+| `--log-file` | Also write the log to this file |
+| `--log-max-size 20`, `--log-keep 3` | Rotate the file at 20 MB, keep 3 old ones (`--log-max-size 0`: never) |
+| `--log-level` | `error`, `warn`, `info` (default), `debug` or `trace`. Debug lines also name the thread |
+| `--log-format json` | One JSON object per line, on the console and in the log file (see below) |
+| `--log-debug` | Extra debug output: `json` (the pool's messages), `per-gpu` (solutions per GPU) |
+| `--no-color` | No colors |
+| `--syslog` | For syslog and journald: no time, and each line's level as a syslog priority (`<4>` for warnings ...) |
+| `--stdout` | Log to stdout instead of stderr |
+| `--display-interval`, `--stats-interval` | Seconds between hashrate lines (10) and statistics tables (60) |
+
+---
+
+## JSON lines
+
+`--log-format json` writes each line as a JSON object with `time`, `level`, `source` and `msg` (the text of the line, without colors), for log collectors and scripts:
+
+```json
+{"time":"2026-10-19T05:38:10.512-03:00","level":"info","source":"share","msg":"✔ accepted gpu0 · diff 8.59 GH · 357 ms · A1","event":"share","result":"accepted","gpu":0,"difficulty":8589934592,"ms":357}
+```
+
+The lines worth reading by a program also have an `event` and its values:
+
+| `event` | Values |
+| ------- | ------ |
+| `connected`, `disconnected` | `host` |
+| `difficulty` | `epoch`, `difficulty` (hashes per share) |
+| `job` (debug level) | `block` |
+| `share` | `result` (`accepted`, `stale` or `rejected`), `gpu`, `difficulty`, `ms`, `reason` |
+| `block` | `gpu`, `height`, `ms` |
+| `hashrate` | `hashrate`, `hashrate60`, `hashrate900` (H/s), `accepted`, `rejected`, `failed`, `effective` |
+| `gpu` | `gpu`, `hashrate`, `paused`, `temp` (°C), `fan` (%), `power` (W) |
+| `pool_majority` | `pool`, `share` (0 to 1): your pool has the majority of the blocks |
+| `tune_step`, `tuned` | `--oc-tune`'s measurements and results |
+
+With `--log-level debug` each line also has the `thread`. For the current state rather than a stream of events, the [JSON API](/hashwarp/api) is easier to read.

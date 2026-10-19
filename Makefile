@@ -41,7 +41,7 @@ run-stdio: build
 run-http: build
 	./bin/parallax-mcp --transport http --log-format text
 
-sync-content: ## Refresh the embedded docs and PIPs (needs ../parallax and the gh CLI)
+sync-content: ## Refresh the embedded docs and PIPs (needs ../parallax-docs and the gh CLI)
 	scripts/sync-content.sh
 
 clean:

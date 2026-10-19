@@ -1,0 +1,148 @@
+---
+title: "Your node in Parallax Wallet"
+sidebarTitle: "Your node"
+description: "The node bar and the Network panel: the block clock, the latest blocks, your peers, the mempool, the fee to offer, and everything about your node."
+---
+
+Parallax Wallet runs a full Parallax node inside the app. It downloads and
+checks every block itself, and your balance, your history and your sends
+all go through it, never through someone else's server. This page covers
+where you see it and what you can do with it.
+
+---
+
+## The node bar
+
+The capsule along the bottom of the window shows your node from every page:
+
+- **Its state**: **Syncing** (with a progress bar), **Synced**, **Offline**
+  or **Restarting**.
+- **The best block**, **its peers** and **how long it has been up**.
+- **Connect** or **Disconnect**, to start or stop the node.
+
+When a change in **Settings** needs the node to restart, the bar says
+**Restart to apply your changes**, with a button to do it. With Tor on, it
+also says how Tor is doing: the node waits for Tor before it connects (see
+**Settings → Privacy**).
+
+Click the bar (anywhere but its button) to open it into the **Network**
+panel. Its collapse button, or Escape, closes it again.
+
+---
+
+## When the node is offline
+
+While the node is stopped, the panel says **You're not connected**, with
+**Connect** to start it. Your addresses and keys still work, but balances,
+activity and sending wait for the node. If the last start failed, the bar
+and the panel say why, until a start succeeds.
+
+---
+
+## Syncing
+
+On first launch, and after the app has been closed a while, the node
+catches up with the network:
+
+- **Looking for peers**: it's connecting to the network. Syncing starts as
+  soon as a peer answers.
+- **Syncing**: it's downloading and checking the chain, with how many
+  blocks are left. The node is ready once it reaches the network's head.
+
+The first sync uses **Snap** sync by default, which gets a usable node in
+hours rather than days; see **Settings → Node → Sync mode**. **Keep the
+computer awake**, in **Settings → General**, stops it from sleeping while
+the node syncs.
+
+---
+
+## The block clock
+
+Once synced, the panel leads with the **best block**, the newest block your
+node has, and the time **since the last block**. Parallax aims for a block
+every 10 minutes, but blocks are found at random, so the wait varies a lot.
+The clock says how this one stands:
+
+| It says | The wait so far |
+|---|---|
+| **On schedule** | Up to 10 minutes |
+| **Running long** | Up to 30 minutes |
+| **Unusually long** | Up to an hour |
+| **Very long wait** | Over an hour |
+
+Beside it, **"N% of blocks take longer"** puts the wait in context: even
+after 20 minutes, about one block in seven still takes longer. A long wait
+on its own isn't a fault.
+
+Under the clock, the **block lane** draws the last two hours of blocks on a
+timeline: each block a bar at the moment it was found, as tall as it was
+full, and the wait since the last one growing towards **Now**, against a
+tick at the 10 minute target.
+
+---
+
+## Peers, the mempool, the fee and uptime
+
+A row of figures sits under the clock:
+
+| Figure | What it shows |
+|---|---|
+| **Peers** | How many nodes yours is connected to, split into **inbound** (they connected to you) and **outbound** (you connected to them) |
+| **Mempool** | Transactions waiting to go into a block: how many are **pending**, how many are **queued**, and their size |
+| **Recommended fee** | The fee to offer now: the smart fee estimate when your node has one, or the suggested gas price while it warms up |
+| **Uptime** | How long since the node last started |
+
+Click **Peers** or **Mempool** to open its list.
+
+### Peers
+
+The list shows each peer's direction, client, address and latency, and
+filters by **All**, **Inbound**, **Outbound** or **Blocked**. Open a peer to
+see its full node ID, enode URL, addresses, network and capabilities, and
+to act on it:
+
+- **Disconnect** it.
+- **Trust** it: a trusted peer can connect even when every peer slot is
+  taken. Only peers with an enode URL can be trusted.
+- **Block** it: it's disconnected, and its IP address refused for 1 hour,
+  1 day, 1 week, 30 days or permanently.
+
+**Add peer** connects to a node by its enode URL (`enode://…`) or its
+`ip:port`. An enode URL is dialed again whenever it drops, even after a
+restart; an `ip:port` goes in the node's address book and is dialed first.
+
+**Blocked** lists every blocked address with when its block ends. You can
+unblock one, unblock them all, or block an IP address or a subnet by hand
+(for example `203.0.113.0/24`).
+
+### Mempool
+
+The list shows up to 200 waiting transactions, searchable by hash or
+address:
+
+- **Pending**: ready to go into the next block.
+- **Queued**: not minable yet, held back by a gap in its account's nonces
+  or too little balance.
+
+Open a transaction to see its hash, sender and recipient, nonce, value,
+gas price, gas limit, the most it can pay in fees, its input data and its
+size.
+
+---
+
+## More details
+
+**More details**, at the foot of the panel, opens the rest, a card per
+group. The app remembers whether you left it open.
+
+| Group | What's there |
+|---|---|
+| **Node** | Its sync mode (and whether it's pruned or an archive node), the daemon's version, its node ID, whether it reports to the [status page](https://status.parallaxprotocol.org) and under what name, and snap sync's progress while it runs |
+| **Chain** | The difficulty (the work needed to find the next block), the total difficulty (all the work behind the chain) and the head block's hash |
+| **Usage** | CPU, memory, the free space on the chain's disk, disk activity, and the data directory |
+| **Networking** | Peers out of the most allowed, split by direction and by network (clearnet or onion), download and upload speed, whether other nodes can reach yours, and your node's enode URL |
+
+The free space turns amber as it nears the point where the node stops
+itself to protect its database, and red once it's there. That point is
+**Settings → Node → Minimum free disk space**; see
+[Troubleshooting](/parallax-wallet/troubleshooting#the-node).

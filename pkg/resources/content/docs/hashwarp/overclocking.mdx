@@ -1,0 +1,101 @@
+---
+title: "Overclocking"
+sidebarTitle: "Overclocking"
+description: "Set the clocks, power limits and fans of your GPUs with Hashwarp, and let --oc-tune find the best settings."
+---
+
+XHash is limited by the GPU's memory: a higher memory clock raises the hashrate, while the core clock can usually go well below its default without costing any hashrate, which saves power. Hashwarp sets both itself, on **NVIDIA** GPUs (Linux and Windows) and **AMD** GPUs (Linux), and puts each GPU back to its previous settings when it exits.
+
+<Note>
+  Changing clocks needs root on Linux (`sudo hashwarp ...`) or administrator rights on Windows. Rig operating systems that overclock themselves, such as HiveOS and mmpOS, don't need these options: set the overclock there.
+</Note>
+
+---
+
+## Finding the settings: --oc-tune
+
+```bash
+sudo hashwarp --oc-tune         # memory and core clocks, 10 to 20 minutes
+sudo hashwarp --oc-tune=core    # only the core clock, which is safe, about 5 minutes
+```
+
+The tuner mines offline at an easy difficulty and checks every result on the CPU:
+
+1. It raises the memory clock step by step, as long as the results stay correct and the hashrate grows. GDDR6X memory corrects its own errors, which shows as a hashrate that falls again rather than as wrong results; the tuner watches for both. It keeps the best memory clock, or the one below it when that costs almost nothing.
+2. It lowers the core clock as far as the hashrate stays within 1%.
+3. It mines a while longer with both to confirm them, and backs off a step if they fail.
+
+It logs each step and the result per GPU, then saves the results to `hashwarp-oc.json` next to the configuration file (`--oc-tune-file` to change it). Mine with them using the `tuned` profile:
+
+```bash
+sudo hashwarp --oc-profile tuned --pool ... --wallet ...
+```
+
+<Warning>
+  Tune with the GPUs otherwise idle. A desktop, a video or a game on the same GPU makes the hashrate unsteady: the tuner notices and measures longer, but its results are less precise.
+</Warning>
+
+- `--oc-tune=core` keeps a memory clock tuned before, and only tunes the core clock.
+- A memory clock that is too high can hang a GPU. The [watchdog](/hashwarp/safety#the-watchdog) then exits Hashwarp, which restores the settings.
+- Run `--oc-tune` again after changing drivers or cooling, or swapping GPUs: results are kept per GPU.
+
+---
+
+## Profiles
+
+`--oc-profile` takes one profile per GPU, or one for all:
+
+| Profile | Settings |
+| ------- | -------- |
+| `tuned` | The GPU's `--oc-tune` results |
+| `efficient` | The tuned core clock, never the memory. On GPUs that weren't tuned, 80% of the default power limit |
+| `stock` | Default clocks, power limit and fan control |
+
+Your own profiles go into the [configuration file](/hashwarp/configuration#the-configuration-file), and can be chosen per GPU:
+
+```json
+{
+    "oc-profile": ["fast", "fast", "quiet"],
+    "oc-profiles": {
+        "fast": {"core-clock": 1650, "mem-offset": 2500, "power": 320},
+        "quiet": {"core-clock": 1400, "power": "70%", "fan": 60}
+    }
+}
+```
+
+A profile's keys are the settings below without the `oc-` prefix.
+
+---
+
+## Settings
+
+These take [one value per GPU](/hashwarp/configuration#lists-per-gpu), or one for all; `x` leaves a GPU alone, for example `--oc-mem-offset 2000,x,1500`. They override a profile's values.
+
+| Option | Meaning |
+| ------ | ------- |
+| `--oc-core-clock` | Core clock in MHz: locked on NVIDIA, highest state on AMD. `0`: default |
+| `--oc-core-offset` | Core clock offset in MHz (NVIDIA) |
+| `--oc-mem-offset` | Memory clock offset in MHz (NVIDIA), in the units of nvidia-settings and HiveOS, which are twice MSI Afterburner's: Afterburner's +1000 is +2000 |
+| `--oc-mem-clock` | Memory clock of the highest state in MHz (AMD). `0`: default |
+| `--oc-power` | Power limit in W, or in percent of the default (`75%`) |
+| `--oc-fan` | Fan speed in percent, or `auto` |
+
+Each GPU's settings are logged when mining starts:
+
+```
+06:12:01  INFO  gpu0   Overclock core 1650 MHz, mem +2500 MHz, power 320 W
+```
+
+### AMD GPUs
+
+On Linux, AMD GPUs only accept clock changes with overdrive enabled: add `amdgpu.ppfeaturemask=0xffffffff` to the kernel command line and reboot. AMD GPUs take a memory clock (`--oc-mem-clock`) rather than an offset. Overclocking AMD GPUs on Windows isn't supported: use AMD Adrenalin.
+
+---
+
+## Restoring the stock settings
+
+Hashwarp restores each GPU's previous settings when it exits, also after a watchdog exit. If it is killed (`kill -9`, a power loss), it can't: reboot, or set the stock settings with
+
+```bash
+sudo hashwarp --oc-reset
+```

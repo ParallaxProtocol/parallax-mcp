@@ -1,0 +1,94 @@
+---
+title: "Solo Mining"
+sidebarTitle: "Solo Mining"
+description: "How to mine Parallax on your own node with Hashwarp: the whole block reward, no pool."
+---
+
+Solo mining sends your hashrate to your own Parallax node instead of a pool. Each block you find pays the whole block reward to you, but blocks come irregularly: a small rig can go a long time without one. On a pool, rewards come in small, regular amounts instead; see [Pool Mining](/hashwarp/pool-mining).
+
+---
+
+## Step-by-step Guide
+
+<Steps>
+  <Step title="Start your node with mining enabled">
+    Run the [Parallax client](/guides/client/setup) with the mining API and the address that receives the rewards:
+
+    ```bash
+    ./parallaxd --http --http.api "eth,net,web3,miner" --mine --miner.coinbase <YOUR_ADDRESS>
+    ```
+
+    The node must be synced: until then it has no work to give.
+  </Step>
+
+  <Step title="Point Hashwarp to it">
+    ```bash
+    hashwarp --solo                            # node on this computer, http://127.0.0.1:8545
+    hashwarp --solo http://192.168.1.10:8545   # node on another computer
+    ```
+
+    The block reward goes to the node's `--miner.coinbase` address: Hashwarp doesn't need `--wallet` for solo mining.
+  </Step>
+
+  <Step title="Wait for a block">
+    Each block found is logged with its height:
+
+    ```
+    06:20:45  INFO  block  ★ BLOCK FOUND by gpu0 at height 60500 · 5 ms
+    ```
+
+    The reward can be spent once the block has 100 blocks on top of it. Check your balance with:
+
+    ```bash
+    ./parallaxd attach --exec "eth.getBalance('<YOUR_ADDRESS>')"
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Keep the node's HTTP and WebSocket ports on your local network: the mining API has no authentication, so anyone who can reach it can submit work to your node.
+</Warning>
+
+---
+
+## New work without polling: WebSocket
+
+Over HTTP, Hashwarp asks the node for new work every second (`--getwork-interval`, in milliseconds). Over the node's WebSocket, the node can instead push each new block's work to Hashwarp the moment it has it, and blocks go back on the same connection:
+
+```bash
+./parallaxd --ws --ws.api "eth,net,web3,miner" --mine --miner.coinbase <YOUR_ADDRESS>
+hashwarp --solo ws://127.0.0.1:8546
+```
+
+When the node pushes work, Hashwarp says so when it connects:
+
+```
+06:20:33  INFO  node   The node pushes new work
+```
+
+<Note>
+  Pushing new work needs a Parallax client that supports the `newWork` subscription. With an older client, Hashwarp asks for work on the same WebSocket every `--getwork-interval` milliseconds instead, and says so when it connects: mining works the same.
+</Note>
+
+`wss://` works with a node behind a TLS proxy.
+
+---
+
+## Solo with a failover pool
+
+Solo mining combines with failover pools: Hashwarp mines on the pool while the node is unreachable, and moves back to the node with `--failover-timeout`:
+
+```bash
+hashwarp --solo --pool pool.example.com:3333 --wallet <YOUR_ADDRESS> --failover-timeout 10
+```
+
+---
+
+## Options
+
+| Option | Meaning |
+| ------ | ------- |
+| `--solo [URL]` | The node's URL: `http://host:8545` (default `http://127.0.0.1:8545`), or `ws://host:8546` / `wss://` |
+| `--getwork-interval` | Milliseconds between requests for new work, when the node doesn't push it (1000) |
+| `--work-timeout` | Reconnect when no new work arrives for this many seconds (7200) |
+| `--report-hashrate` | Report the hashrate to the node, which adds it to the hashrate it shows |

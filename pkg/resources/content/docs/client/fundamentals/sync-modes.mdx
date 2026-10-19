@@ -39,3 +39,9 @@ It is also possible to create a partial/recent archive node where the node was s
 ## Summary
 
 There are several ways to sync a Parallax node. The default is to use snap sync to create a full node. Full nodes can be created by syncing block-by-block from genesis (full-sync) or by starting at an intermediate checkpoint block (snap-sync). By default, these modes prune state data older than 128 blocks, keeping only checkpoints that enable on-request regeneration of historical states. For rapid queries of historical data an archive node is required. Archive nodes keep local copies of all historical data right back to genesis. Partial archive nodes can be created by snap-syncing a node and turning off state-pruning to create a node that keeps all states since the initial sync block.
+
+{/* third-party attribution */}
+
+---
+
+_Adapted from [Sync modes](https://geth.ethereum.org/docs/fundamentals/sync-modes) in the go-ethereum documentation, © The go-ethereum Authors. See the [third-party notices](https://github.com/ParallaxProtocol/parallax-docs/blob/main/THIRD_PARTY_NOTICES.md)._

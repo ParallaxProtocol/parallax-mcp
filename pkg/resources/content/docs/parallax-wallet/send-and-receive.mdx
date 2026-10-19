@@ -1,0 +1,98 @@
+---
+title: "Sending and receiving in Parallax Wallet"
+sidebarTitle: "Sending and receiving"
+description: "Send and receive LAX, speed up or cancel a send that's waiting, and follow your history in Parallax Wallet."
+---
+
+Sending, and seeing your balance and activity, go through your own node:
+it needs to be running and in sync. Your addresses and keys work without
+it, so **Receive** always shows your address. For how sending works on
+Parallax in general, see [Sending and receiving LAX](/guides/wallets/send-and-reveive).
+
+---
+
+## Receive
+
+**Receive** shows your address, a **Copy** button and a QR code. You can
+use the same address as many times as you like. Only send LAX on the
+Parallax network (chain ID 2110) to it.
+
+For a hardware wallet account, choose **Verify on Ledger** (or **Trezor**)
+to check the address on the device before you share it; see
+[Hardware wallets](/parallax-wallet/hardware-wallets#check-your-address-on-the-device).
+
+---
+
+## Send
+
+<Steps>
+  <Step title="Fill in the recipient and the amount">
+    **Send** takes an address, or a contact's name from your
+    [Contacts](/parallax-wallet/contacts). It says when the address is one of
+    your own accounts or a contact. **Max** sends your whole balance less the
+    fee.
+  </Step>
+  <Step title="Choose the fee">
+    The network fee is **Suggested** by your node, from recent blocks and its
+    pool, or **Custom** if you'd rather pay more to get into a block sooner.
+    A custom fee can't go below the suggested one: a transaction that waits
+    holds back every later one from the same account.
+  </Step>
+  <Step title="Review and send">
+    **Review and sign** shows the recipient in full (check every character
+    against the address you were given), the amount, the network fee and the
+    total. It warns you when something looks off: sending to the same
+    account, sending to a contract, or a fee more than three times what your
+    node suggests. Then **Sign and send**: a hardware wallet account confirms
+    on the device, and a watch-only account makes a signing request for your
+    [offline signer](/parallax-wallet/offline-signing).
+  </Step>
+</Steps>
+
+While the node is offline or still syncing, **Send** says so and waits:
+connect, or let it finish syncing, first.
+
+---
+
+## A send that's waiting
+
+A send stays **Pending** until a miner puts it in a block. From its row in
+your activity you can:
+
+- **Speed up**: send the same transaction again with a higher fee, so
+  miners take it sooner. It replaces the original.
+- **Cancel**: send 0 LAX to your own account in its place, with a higher
+  fee, so miners take it instead. Only the fee is spent.
+
+Either way, if the original makes it into a block first, the replacement
+has no effect and costs nothing.
+
+The wallet keeps each of its sends until it's in a block, and sends it to
+the network again whenever the node starts or the wallet unlocks. A send
+the node lost by restarting still reaches its peers.
+
+---
+
+## History
+
+**History** lists everything an account has sent, received and mined:
+
+- **Filters** for **Received**, **Sent**, **Mined** and **Failed**.
+- **Search** by contact, address, transaction hash or block number, and
+  **Go to a date**. Search by hash reaches back as far as the node's
+  transaction index, about a year of blocks: go to an older transaction's
+  date instead.
+- **Export** saves what's shown as a CSV file.
+
+On a new install, the history is indexed in the background: the latest
+activity shows at once, and older activity appears as indexing goes on
+(**Indexing history**, with its progress). Export is available once it's
+done.
+
+---
+
+## See also
+
+- [Contacts](/parallax-wallet/contacts): send to people by name.
+- [Signing messages](/parallax-wallet/messages): prove you own an address
+  without sending anything.

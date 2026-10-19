@@ -46,3 +46,9 @@ This can be used to deliberately clean up a node. Passing `--datadir --removedb`
 If the Parallax client stops unexpectedly the database can be corrupted. This is known as an "unclean shutdown" and it can lead to a variety of problems for the node when it is restarted. It is always best to shut down the Parallax client gracefully, i.e. using a shutdown command such as `ctrl-c`, `docker stop -t 300 <container ID>` or `systemctl stop` (although please note that `systemctl stop` has a default timeout of 90s - if the Parallax client takes longer than this to gracefully shut down it will quit forcefully. Update the `TimeoutSecs` variable in `systemd.service` to override this value to something larger, at least 300s). This way, the Parallax client knows to write all relevant information into the database to allow the node to restart properly later. This can involve >1GB of information being written to the LevelDB database which can take several minutes.
 
 If an unexpected shutdown does occur, the `removedb` subcommand can be used to delete the state database and resync it from the ancient database. This should get the database back up and running.
+
+{/* third-party attribution */}
+
+---
+
+_Adapted from [Databases](https://geth.ethereum.org/docs/fundamentals/databases) in the go-ethereum documentation, © The go-ethereum Authors. See the [third-party notices](https://github.com/ParallaxProtocol/parallax-docs/blob/main/THIRD_PARTY_NOTICES.md)._

@@ -325,3 +325,9 @@ def quick_hashimoto_cached(cache, dagsize, params, header, nonce):
         mix ^= quick_calc_cached(cache, params, m + (mix & mask) % m)
     return dbl_sha3(mix)
 ```
+
+{/* third-party attribution */}
+
+---
+
+_Adapted from [Dagger-Hashimoto](https://ethereum.org/developers/docs/consensus-mechanisms/pow/mining/mining-algorithms/dagger-hashimoto/) on ethereum.org, © ethereum.org contributors, under the MIT License. See the [third-party notices](https://github.com/ParallaxProtocol/parallax-docs/blob/main/THIRD_PARTY_NOTICES.md)._
